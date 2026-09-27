@@ -106,25 +106,25 @@ separate to avoid leakage:
 
 | Dataset | Modality | Sample rate | Notes |
 |---|---|---|---|
-| **CWRU** (Case Western Reserve University Bearing Data Center) | Vibration | up to 48 kHz | The standard benchmark in the bearing-fault literature; inner/outer race and rolling-element faults under controlled load. |
-| **IMS** (Intelligent Maintenance Systems, NSF I/UCR) | Vibration | 20 kHz | Run-to-failure recordings from real bearing test rigs, used to learn degradation trajectories rather than a single fault/no-fault snapshot. |
-| **FEMTO / PRONOSTIA** | Vibration | 25.6 kHz | High-speed bearing degradation data (Bearing1_1, Bearing2_1) under varying speed/load, used to stress-test robustness to operating-condition shift. |
-| **Paderborn University** | Vibration, **motor current, force, torque** | 64 kHz (vib) | The only dataset here with four synchronized modalities on the same fault event. Used to confirm the domain-adversarial approach transfers to non-vibration sensing (a from-scratch torque-domain classifier reached 98.7% in-domain accuracy). |
-| **SUBF** | Audio | ~4.8 kHz (physically verified via FFT harmonic-peak analysis; the file headers claim 44.1 kHz, which does not match the recorded content) | Squeal and bearing-fault audio, used to seed the audio branch's domain-invariance training. |
+| **[CWRU](https://engineering.case.edu/bearingdatacenter/download-data-file)** (Case Western Reserve University Bearing Data Center) | Vibration | up to 48 kHz | The standard benchmark in the bearing-fault literature; inner/outer race and rolling-element faults under controlled load. |
+| **[IMS](https://phm-datasets.s3.amazonaws.com/NASA/4.+Bearings.zip)** (Intelligent Maintenance Systems, NSF I/UCR) | Vibration | 20 kHz | Run-to-failure recordings from real bearing test rigs, used to learn degradation trajectories rather than a single fault/no-fault snapshot. |
+| **[FEMTO / PRONOSTIA](https://github.com/wkzs111/phm-ieee-2012-data-challenge-dataset)** | Vibration | 25.6 kHz | High-speed bearing degradation data (Bearing1_1, Bearing2_1) under varying speed/load, used to stress-test robustness to operating-condition shift. |
+| **[Paderborn University](https://mb.uni-paderborn.de/kat/forschung/bearing-datacenter/data-sets-and-download)** | Vibration, **motor current, force, torque** | 64 kHz (vib) | The only dataset here with four synchronized modalities on the same fault event. Used to confirm the domain-adversarial approach transfers to non-vibration sensing (a from-scratch torque-domain classifier reached 98.7% in-domain accuracy). |
+| **[SUBF](https://www.kaggle.com/datasets/sumairaziz/subf-v2-0-dataset-bearing-faults-sound-data)** | Audio | ~4.8 kHz (physically verified via FFT harmonic-peak analysis; the file headers claim 44.1 kHz, which does not match the recorded content) | Squeal and bearing-fault audio, used to seed the audio branch's domain-invariance training. |
 
 ### 2.3 Tuning datasets (multimodal fusion development)
 
 | Dataset | Modality | Notes |
 |---|---|---|
-| **MaFaulDa** (Machinery Fault Database) | Vibration (tri-axial) + audio, synchronized | Six machine states: normal, imbalance, horizontal/vertical misalignment, inner/outer/ball bearing fault. Used to develop and later re-evaluate cross-modal fusion (Section 6). |
+| **[MaFaulDa](https://www02.smt.ufrj.br/~offshore/mfs/page_01.html)** (Machinery Fault Database) | Vibration (tri-axial) + audio, synchronized | Six machine states: normal, imbalance, horizontal/vertical misalignment, inner/outer/ball bearing fault. Used to develop and later re-evaluate cross-modal fusion (Section 6). |
 
 ### 2.4 Held-out evaluation datasets (zero-shot test)
 
 | Dataset | Modality | Files | Notes |
 |---|---|---|---|
-| **Car Diagnostics Dataset** | Audio | 1,386 real automotive recordings | Consumer-recorded faults: worn serpentine belts, squealing brakes, and more, in real cars. Never seen during pretraining. |
-| **Engine Journal Bearings Dataset** (Mendeley) | Vibration | 134 files (healthy + faulty), multiple RPM/temperature/humidity conditions | Vibration recordings from a real automobile engine's journal bearings — the only held-out dataset that is itself an actual vehicle engine rather than a laboratory rig. |
-| **MathWorks Rolling-Element Bearing Fault Dataset** | Vibration | Small (3 normal files total) | Controlled inner-race/outer-race/rolling-element faults under varying load and speed; kept as a held-out sanity check despite its small size (see Section 10). |
+| **[Car Diagnostics Dataset](https://www.kaggle.com/datasets/malakragaie/car-diagnostics-dataset)** | Audio | 1,386 real automotive recordings | Consumer-recorded faults: worn serpentine belts, squealing brakes, and more, in real cars. Never seen during pretraining. |
+| **[Engine Journal Bearings Dataset](https://data.mendeley.com/datasets/3fcrrdjjvk/5)** (Mendeley) | Vibration | 134 files (healthy + faulty), multiple RPM/temperature/humidity conditions | Vibration recordings from a real automobile engine's journal bearings — the only held-out dataset that is itself an actual vehicle engine rather than a laboratory rig. |
+| **[MathWorks Rolling-Element Bearing Fault Dataset](https://github.com/mathworks/RollingElementBearingFaultDiagnosis-Data)** | Vibration | Small (3 normal files total) | Controlled inner-race/outer-race/rolling-element faults under varying load and speed; kept as a held-out sanity check despite its small size (see Section 10). |
 
 ### 2.5 Datasets considered and not used
 
@@ -133,10 +133,10 @@ rather than silently dropped:
 
 | Dataset | Status | Reason |
 |---|---|---|
-| **Engine Acoustic Emissions** (Kaggle) | Rejected after inspection | Its `.mat` file keys (`normal`, `inner`, `roller`, `outer`) exactly mirror the CWRU bearing-fault taxonomy — it's a relabeled bearing test-rig simulation, not real engine audio as advertised. Excluded to keep every "held-out, real-world" claim in this project honest. Kept as evidence in `sample_data/engine_acoustic_emissions/` rather than deleted. |
-| **UORED-VAFCLS** (University of Ottawa, multimodal) | Acquisition incomplete | Identified as a relevant paired audio-vibration rolling-element-fault dataset; the download did not complete during this project's build window, so no reader/label code was ever written against it. Not used anywhere in this project's results. |
-| **Multi-Sensor Metal Milling Anomaly** (Kaggle) | Acquisition incomplete | A vibration+audio metal-milling anomaly dataset; only a partial download (3 files from a 14GB dataset) was attempted and it did not complete. Not used anywhere in this project's results. |
-| **Vehicle Interior Sound** (Zenodo) | Considered, not used | Normal-condition audio diversity only — no fault labels — so it doesn't fit this project's anomaly-detection evaluation, which needs both normal and faulty examples per dataset. |
+| **[Engine Acoustic Emissions](https://www.kaggle.com/datasets/julienjta/engine-acoustic-emissions)** (Kaggle) | Rejected after inspection | Its `.mat` file keys (`normal`, `inner`, `roller`, `outer`) exactly mirror the CWRU bearing-fault taxonomy — it's a relabeled bearing test-rig simulation, not real engine audio as advertised. Excluded to keep every "held-out, real-world" claim in this project honest. Kept as evidence in `sample_data/engine_acoustic_emissions/` rather than deleted. |
+| **[UORED-VAFCLS](https://data.mendeley.com/datasets/y2px5tg92h/5)** (University of Ottawa, multimodal) | Acquisition incomplete | Identified as a relevant paired audio-vibration rolling-element-fault dataset; the download did not complete during this project's build window, so no reader/label code was ever written against it. Not used anywhere in this project's results. |
+| **[Multi-Sensor Metal Milling Anomaly](https://www.kaggle.com/datasets/manufuturetoday/multi-sensor-for-metal-milling-anomaly)** (Kaggle) | Acquisition incomplete | A vibration+audio metal-milling anomaly dataset; only a partial download (3 files from a 14GB dataset) was attempted and it did not complete. Not used anywhere in this project's results. |
+| **[Vehicle Interior Sound](https://zenodo.org/records/5606504)** (Zenodo) | Considered, not used | Normal-condition audio diversity only — no fault labels — so it doesn't fit this project's anomaly-detection evaluation, which needs both normal and faulty examples per dataset. |
 
 ### 2.6 Sample data in this repo
 
@@ -518,17 +518,20 @@ response and Stage 1's real anomaly score is unaffected.
 
 | Dataset | License | Source | Notes |
 |---|---|---|---|
-| CWRU | Free for research use | [Case Western Reserve University Bearing Data Center](https://engineering.case.edu/bearingdatacenter) | |
-| IMS | Public domain | NASA Prognostics Data Repository | |
-| FEMTO / PRONOSTIA | Open research use | IEEE PHM 2012 Prognostic Challenge | |
-| **Paderborn (KAt)** | **CC BY-NC 4.0 — non-commercial only** | Lessmeier et al., Paderborn University Bearing Data Center | **See flag below** |
-| SUBF | Kaggle research use | `sumairaziz/subf-v2-0-dataset-bearing-faults-sound-data` | |
-| MaFaulDa | Public | UFRJ Signals, Multimedia and Telecommunications Lab | |
-| AI Mechanic | Kaggle research use | `eoinedge/ai-mechanic-engine-condition-audio-fault-finding` | Real BMW M54B25 engine |
-| Car Diagnostics | Kaggle research use | `malakragaie/car-diagnostics-dataset` | |
+| CWRU | Free for research use | [engineering.case.edu/bearingdatacenter](https://engineering.case.edu/bearingdatacenter/download-data-file) | |
+| IMS | Public domain | [NASA Prognostics Data Repository](https://phm-datasets.s3.amazonaws.com/NASA/4.+Bearings.zip) | |
+| FEMTO / PRONOSTIA | Open research use | [IEEE PHM 2012 Prognostic Challenge](https://github.com/wkzs111/phm-ieee-2012-data-challenge-dataset) | |
+| **Paderborn (KAt)** | **CC BY-NC 4.0 — non-commercial only** | Lessmeier et al., [Paderborn University Bearing Data Center](https://mb.uni-paderborn.de/kat/forschung/bearing-datacenter/data-sets-and-download) | **See flag below** |
+| SUBF | Kaggle research use | [`sumairaziz/subf-v2-0-dataset-bearing-faults-sound-data`](https://www.kaggle.com/datasets/sumairaziz/subf-v2-0-dataset-bearing-faults-sound-data) | |
+| MaFaulDa | Public | [UFRJ Signals, Multimedia and Telecommunications Lab](https://www02.smt.ufrj.br/~offshore/mfs/page_01.html) | |
+| AI Mechanic | Kaggle research use | [`eoinedge/ai-mechanic-engine-condition-audio-fault-finding`](https://www.kaggle.com/datasets/eoinedge/ai-mechanic-engine-condition-audio-fault-finding) | Real BMW M54B25 engine |
+| Car Diagnostics | Kaggle research use | [`malakragaie/car-diagnostics-dataset`](https://www.kaggle.com/datasets/malakragaie/car-diagnostics-dataset) | |
 | Engine Journal Bearings | CC BY 4.0 | Riaz et al., Mendeley Data, DOI [10.17632/3fcrrdjjvk.5](https://data.mendeley.com/datasets/3fcrrdjjvk/5) | |
 | MathWorks Rolling-Element Bearing | Redistributed with permission | [github.com/mathworks/RollingElementBearingFaultDiagnosis-Data](https://github.com/mathworks/RollingElementBearingFaultDiagnosis-Data) | Originally collected by Eric Bechhoefer; MathWorks has permission to redistribute for their Predictive Maintenance Toolbox example. Contact Bechhoefer directly for other commercial uses, per the source repository's own README. |
-| Engine Acoustic Emissions | N/A | `julienjta/engine-acoustic-emissions` (Kaggle) | Rejected after inspection (Section 2.5); not used in any result. |
+| Engine Acoustic Emissions | N/A | [`julienjta/engine-acoustic-emissions`](https://www.kaggle.com/datasets/julienjta/engine-acoustic-emissions) (Kaggle) | Rejected after inspection (Section 2.5); not used in any result. |
+| UORED-VAFCLS | Public (Mendeley) | Sehri & Dumond, [DOI 10.17632/y2px5tg92h](https://data.mendeley.com/datasets/y2px5tg92h/5) | Acquisition incomplete (Section 2.5); not used in any result. |
+| Multi-Sensor Metal Milling Anomaly | Kaggle research use | [`manufuturetoday/multi-sensor-for-metal-milling-anomaly`](https://www.kaggle.com/datasets/manufuturetoday/multi-sensor-for-metal-milling-anomaly) | Acquisition incomplete (Section 2.5); not used in any result. |
+| Vehicle Interior Sound | Open (Zenodo) | [zenodo.org/records/5606504](https://zenodo.org/records/5606504) | Considered, not used (Section 2.5) — no fault labels. |
 
 **License conflict, flagged explicitly:** Paderborn/KAt's data is licensed **CC BY-NC 4.0
 (non-commercial only)**, and it is one of the four core pretraining domains for the
