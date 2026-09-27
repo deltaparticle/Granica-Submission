@@ -124,6 +124,7 @@ separate to avoid leakage:
 
 | Dataset | Modality | Files | Notes |
 |---|---|---|---|
+| **[AI Mechanic](https://www.kaggle.com/datasets/eoinedge/ai-mechanic-engine-condition-audio-fault-finding)** | Audio | ~39 usable recordings | Real BMW M54B25 engine audio, real induced faults (air leak, oil cap off). |
 | **[Car Diagnostics Dataset](https://www.kaggle.com/datasets/malakragaie/car-diagnostics-dataset)** | Audio | 1,386 real automotive recordings | Consumer-recorded faults: worn serpentine belts, squealing brakes, and more, in real cars. Never seen during pretraining. |
 | **[Engine Journal Bearings Dataset](https://data.mendeley.com/datasets/3fcrrdjjvk/5)** (Mendeley) | Vibration | 134 files (healthy + faulty), multiple RPM/temperature/humidity conditions | Vibration recordings from a real automobile engine's journal bearings — the only held-out dataset that is itself an actual vehicle engine rather than a laboratory rig. |
 | **[MathWorks Rolling-Element Bearing Fault Dataset](https://github.com/mathworks/RollingElementBearingFaultDiagnosis-Data)** | Vibration | Small (3 normal files total) | Controlled inner-race/outer-race/rolling-element faults under varying load and speed; kept as a held-out sanity check despite its small size (see Section 10). |
@@ -262,22 +263,56 @@ risk to manage, at the cost of not learning an explicit fault-type classifier at
 
 ```mermaid
 flowchart TD
-    A["Raw multi-domain signals\nCWRU · IMS · FEMTO · Paderborn · SUBF · MaFaulDa"] --> B["Resample to modality sample rate\n25.6 kHz vibration / 16 kHz audio"]
-    B --> C["Window: 1.5s window, 0.75s hop\n(file-level split BEFORE windowing — no leakage)"]
-    C --> D["Log-mel spectrogram\n128 mel bins, per-window normalized"]
-    D --> E["SpectrogramEncoder (CNN)\n4 conv blocks -> 128-d embedding"]
-    E --> F["Domain classifier head"]
-    E --> G["Fault / class head"]
-    F -. gradient reversal (GRL), lambda ramp .-> E
-    G --> H["Fault cross-entropy loss"]
-    F --> I["Domain-adversarial loss"]
-    H --> J["Backprop: encoder learns\ndomain-invariant, fault-relevant features"]
-    I --> J
-    J --> K["Frozen encoder checkpoint\nvibration_dann_lambda0.3.pt / audio_dann_lambda0.15.pt"]
-    K --> L["Embed normal-only calibration clips\n(target dataset's own healthy samples)"]
-    L --> M["StandardScaler + PCA fit\n(max 32 components)"]
-    M --> N["Threshold = 90th percentile\nof calibration reconstruction error"]
-    N --> O["Saved memory bank (.joblib)"]
+    subgraph DATA["training data sources"]
+        direction LR
+        CWRU[CWRU]
+        IMS[IMS]
+        FEMTO[FEMTO]
+        PB[Paderborn]
+        SUBF[SUBF]
+        MFD[MaFaulDa]
+    end
+
+    subgraph PREP["preprocessing"]
+        direction LR
+        RESAMPLE["resample + window<br/>1.5s window, 0.75s hop"]
+        MEL["log-mel spectrogram<br/>128 mel bins"]
+        RESAMPLE --> MEL
+    end
+
+    ENC["shared spectrogram encoder<br/>4 conv layers, 128-d embedding"]
+
+    subgraph ADV["adversarial training"]
+        direction LR
+        DOM["domain classifier<br/>gradient reversal layer"]
+        FAULT["fault classifier<br/>cross-entropy loss"]
+    end
+
+    CKPT[("frozen encoder checkpoint<br/>saved once, reused everywhere")]
+
+    subgraph CALIB["per-deployment calibration"]
+        direction TB
+        NORMAL["target's normal data<br/>healthy samples only"]
+        EMBED["embed via encoder<br/>reuses frozen checkpoint"]
+        FITPCA["fit PCA + set threshold<br/>max 32 components"]
+        BANK[("memory bank saved<br/>.joblib file")]
+        NORMAL --> EMBED --> FITPCA --> BANK
+    end
+
+    DATA --> PREP --> ENC
+    ENC --> DOM
+    ENC --> FAULT
+    DOM -. backprop .-> ENC
+    FAULT -. backprop .-> ENC
+    ENC --> CKPT
+    CKPT -.->|loaded by| EMBED
+
+    classDef data fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    classDef model fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef calib fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    class CWRU,IMS,FEMTO,PB,SUBF,MFD,RESAMPLE,MEL,CKPT data
+    class ENC,DOM,FAULT model
+    class NORMAL,EMBED,FITPCA,BANK calib
 ```
 
 Balanced per-domain batch sampling, fault-only warm-start epochs before the adversarial
@@ -302,15 +337,43 @@ spent would suggest for strictly serial execution.
 
 ```mermaid
 flowchart TD
-    A["New sensor file\n.wav audio or .csv vibration"] --> B["Modality-specific reader"]
-    B --> C["Resample + window + log-mel spectrogram"]
-    C --> D["Frozen SpectrogramEncoder\n-> 128-d embedding"]
-    D --> E["PCA reconstruction memory bank\nbank.score(embedding)"]
-    E --> F{"score <= threshold?"}
-    F -->|"Yes: Normal"| G["Stop on Edge\nNo cloud call, zero API cost"]
-    F -->|"No: Anomaly"| H["Package: anomaly score, modality, mechanic notes"]
-    H --> I["Cloud: TypeSafe AI Jev decision model"]
-    I --> J["Structured output:\nfault_type, severity, next action"]
+    subgraph EDGE["edge device (on-phone)"]
+        direction TB
+        FILE["new sensor file<br/>.wav or .csv"]
+        READER["modality-specific reader<br/>loads raw signal"]
+        PREPROC["preprocess signal<br/>resample, window, log-mel"]
+        ENC2["frozen encoder<br/>128-d embedding"]
+        SCORE["memory bank score<br/>PCA reconstruction error"]
+        DECIDE{"score ≤ threshold?"}
+        STOP["stop on edge<br/>no cloud call, zero cost"]
+        FILE --> READER --> PREPROC --> ENC2 --> SCORE --> DECIDE
+        DECIDE -->|normal| STOP
+    end
+
+    subgraph ARTIFACTS["model artifacts"]
+        direction TB
+        CKPT2[("encoder checkpoint<br/>.pt file")]
+        BANK2[("memory bank<br/>.joblib file")]
+    end
+
+    subgraph CLOUD["cloud (TypeSafe Jev)"]
+        direction TB
+        CTX["package context<br/>score + mechanic notes"]
+        JEV["Jev decision model<br/>structured, typed response"]
+        OUT["structured output<br/>fault, severity, action"]
+        CTX --> JEV --> OUT
+    end
+
+    CKPT2 -.->|loaded by| ENC2
+    BANK2 -.->|loaded by| SCORE
+    DECIDE -->|anomaly| CTX
+
+    classDef data fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
+    classDef model fill:#EEEDFE,stroke:#534AB7,color:#26215C
+    classDef calib fill:#E1F5EE,stroke:#0F6E56,color:#04342C
+    class FILE,READER,PREPROC,STOP,CKPT2,BANK2 data
+    class ENC2,CTX,JEV,OUT model
+    class SCORE,DECIDE calib
 ```
 
 Real, end-to-end run against a held-out faulty vibration file (Engine Journal Bearings
