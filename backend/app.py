@@ -327,9 +327,35 @@ def compare_spectrogram(dataset_key: str):
         sig_f, sr_f, spec_f, _ = _read_and_spectrogram(dataset_key, faulty_path)
     except Exception as e:
         abort(500, description=f"Failed to read files: {e}")
+
+    # --- Phase 3: Text Analysis Logic ---
+    # 1. Calculate MSE Anomaly Score
+    max_time = max(spec_n.shape[1], spec_f.shape[1])
+    spec_n_padded = np.pad(spec_n, ((0, 0), (0, max_time - spec_n.shape[1])), mode="constant")
+    spec_f_padded = np.pad(spec_f, ((0, 0), (0, max_time - spec_f.shape[1])), mode="constant")
+    
+    diff = spec_f_padded - spec_n_padded
+    mse_score = float(np.mean(diff ** 2))
+    
+    # 2. Peak Anomaly Frequency Band
+    # Find the mel bin (y-axis) with the maximum absolute difference
+    mean_diff_per_bin = np.mean(np.abs(diff), axis=1)
+    peak_bin = int(np.argmax(mean_diff_per_bin))
+    # Approximate mel to Hz conversion
+    mel_freqs = librosa.mel_frequencies(n_mels=128, fmin=0, fmax=display_sr / 2)
+    peak_freq_hz = mel_freqs[peak_bin]
+    peak_freq_str = f"{peak_freq_hz:.1f} Hz Band"
+    if peak_freq_hz > 1000:
+        peak_freq_str = f"{(peak_freq_hz / 1000):.2f} kHz Band"
+
+    # 3. Clinical Diagnosis text
+    fault = ds.get("fault_detail", "Unknown anomaly")
+    diagnosis = f"Significant spectral deviation detected at {peak_freq_str}. Pattern consistent with {fault}."
+    
     comparison_png = _render_comparison_png(spec_n, spec_f, display_sr, ds["name"], ds.get("fault_detail", "Unknown fault"))
     wave_normal_png = _render_waveform_png(sig_n, sr_n, title=f"Normal Waveform — {Path(normal_path).name}", color="#4ade80")
     wave_faulty_png = _render_waveform_png(sig_f, sr_f, title=f"Faulty Waveform — {Path(faulty_path).name}", color="#f87171")
+    
     return jsonify({
         "dataset": dataset_key,
         "dataset_name": ds["name"],
@@ -340,6 +366,9 @@ def compare_spectrogram(dataset_key: str):
         "comparison_b64": _to_b64(comparison_png),
         "waveform_normal_b64": _to_b64(wave_normal_png),
         "waveform_faulty_b64": _to_b64(wave_faulty_png),
+        "anomaly_score": mse_score,
+        "peak_freq": peak_freq_str,
+        "diagnosis": diagnosis,
     })
 
 @app.route("/health", methods=["GET"])
