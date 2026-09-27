@@ -102,8 +102,10 @@ MANIFEST = [
         source="kaggle",
         location="julienjta/engine-acoustic-emissions",
         approx_size="~1MB, 4 files",
-        notes="UNVERIFIED CONTENT — inspect manually before using as an evaluation set "
-              "(see plan Section 3.4 caveat).",
+        notes="REJECTED after inspection: its .mat file keys (normal/inner/roller/outer) "
+              "exactly mirror the CWRU bearing-fault taxonomy — a relabeled bearing-rig "
+              "simulator, not real engine audio as advertised. Not used in any result; "
+              "kept on disk and in sample_data/ as evidence of this check.",
     ),
     DatasetEntry(
         key="vehicle_interior_sound",
@@ -113,6 +115,19 @@ MANIFEST = [
         location="https://zenodo.org/records/5606504",
         approx_size="~1.2GB, 5980 clips",
         notes="Normal-class diversity only — no fault labels.",
+    ),
+    DatasetEntry(
+        key="mathworks_bearing",
+        pool="held_out",
+        modality="vibration",
+        source="git",
+        location="https://github.com/mathworks/RollingElementBearingFaultDiagnosis-Data",
+        approx_size="~43MB, 20 .mat files (baseline/inner-race/outer-race)",
+        notes="Originally collected by Eric Bechhoefer; MathWorks obtained permission to "
+              "redistribute for their Predictive Maintenance Toolbox example (contact "
+              "Bechhoefer directly for other commercial uses, per the repo's own README). "
+              "Previously used in this project's evaluation without a registry entry here — "
+              "added for provenance/traceability.",
     ),
     DatasetEntry(
         key="engine_journal_bearings",

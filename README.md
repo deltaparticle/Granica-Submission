@@ -15,27 +15,86 @@ around the constraint that the only data a real driver can ever realistically pr
 
 ## Contents
 
-1. [Datasets](#1-datasets)
-2. [Architecture](#2-architecture)
-3. [Training pipeline](#3-training-pipeline)
-4. [Inference pipeline](#4-inference-pipeline)
-5. [Model development and experimental validation](#5-model-development-and-experimental-validation)
-6. [Results](#6-results)
-7. [Repository structure](#7-repository-structure)
-8. [Setup and running](#8-setup-and-running)
-9. [Known limitations](#9-known-limitations)
+1. [Origin & motivation](#1-origin--motivation)
+2. [Datasets](#2-datasets)
+3. [Architecture](#3-architecture)
+4. [Training pipeline](#4-training-pipeline)
+5. [Inference pipeline](#5-inference-pipeline)
+6. [Model development and experimental validation](#6-model-development-and-experimental-validation)
+7. [Results](#7-results)
+8. [Repository structure](#8-repository-structure)
+9. [Setup and running](#9-setup-and-running)
+10. [Known limitations](#10-known-limitations)
+11. [Data licensing & attribution](#11-data-licensing--attribution)
 
 ---
 
-## 1. Datasets
+## 1. Origin & motivation
+
+This project started with a conversation in two labs at **IIT Guwahati** — the Mechanical
+Engineering workshop and a Chemical Engineering process lab. Teaching assistants and lab
+technicians in both places described the same recurring problem: rotating equipment
+(motors, pumps, compressors) usually gives an audible or vibrational warning before it
+actually fails, and whoever is running it can often hear that something is off — but not
+*how urgent* it is. Without a way to judge urgency, marginal cases get deferred, sometimes
+until the equipment fails outright and the lab loses days to an unplanned teardown instead
+of a scheduled few-minute check.
+
+Looking past the two labs, the same shape of problem shows up anywhere physical hardware
+runs continuously without a dedicated reliability engineer watching it — from small
+electric-vehicle scooters and two-wheelers to any company operating a fleet of pumps,
+compressors, or motors. The constraint is the same one the labs have: no calibrated
+sensors, no historical fault-labeled data from that specific machine, and no one on call
+whose job is to interpret the warning signs — just someone who can hear that something is
+wrong and needs a second opinion on how urgent it is. That gap — sensing is easy, judging
+urgency is not — is what this project targets.
+
+---
+
+## 2. Datasets
 
 This project is built on physical sensor data — vibration accelerometer readings and
-raw audio — from nine public, physics-grounded fault datasets, spanning five sensing
+raw audio — from public, physics-grounded fault datasets, spanning five sensing
 modalities (vibration, audio, motor current, force, torque) and machine classes from
 laboratory bearing rigs to a real automobile engine. No dataset here is synthetic; every
 signal was recorded from a physical rotating machine or vehicle.
 
-Datasets are used for three distinct purposes, kept strictly separate to avoid leakage:
+### 2.1 Why public datasets, and what qualifies one for inclusion
+
+A domain-invariant encoder needs thousands of labeled fault examples spanning many
+machines, conditions, and fault types to pretrain — that scale cannot be manually
+collected within a hackathon's timeframe, or realistically by one small team on any
+timeframe without the kind of dedicated lab access most teams don't have. The datasets
+below exist because multiple research labs already spent months to years building them;
+using them as a pretraining backbone is what makes it possible to build something that
+generalizes at all. Every dataset used here had to clear the same filters before being
+trusted:
+
+1. **Real physical origin.** The signal must come from an actual physical sensor
+   (accelerometer, microphone, current/force/torque transducer) mounted on a real
+   rotating machine — never a simulated or synthetically generated waveform.
+2. **Traceable provenance.** The dataset must come from an identifiable research group,
+   institution, or documented public repository with a citation — not an anonymous
+   re-upload with no way to verify what it actually is. This is the exact check that
+   caught the "Engine Acoustic Emissions" dataset below being a relabeled bearing-rig
+   simulator rather than the real engine audio it was advertised as.
+3. **A usable normal/healthy baseline.** Our deployed anomaly detector calibrates on
+   normal-only data (Section 3) — a dataset with only fault examples and no healthy
+   baseline can't be used the way this project needs it.
+4. **Sufficient sample rate for the modality.** The sensor's sampling rate has to be high
+   enough to physically carry the frequency content a fault would show up in. Where this
+   isn't clearly true (Engine Journal Bearings' native ~296 Hz rate, Section 10), it's
+   flagged as a limitation rather than silently accepted.
+5. **A license compatible with research/hackathon use**, with any stricter restriction
+   (Paderborn's non-commercial license) called out explicitly rather than absorbed
+   silently — see Section 11.
+6. **Independent inspection before trust.** Every dataset here was actually downloaded
+   and manually checked against its own documentation, not taken on faith — the
+   discipline that caught the mislabeled dataset above and an incorrect sample-rate
+   assumption in SUBF (Section 2.2).
+
+Datasets that pass these filters are used for three distinct purposes, kept strictly
+separate to avoid leakage:
 
 | Role | Meaning |
 |---|---|
@@ -43,7 +102,7 @@ Datasets are used for three distinct purposes, kept strictly separate to avoid l
 | **Tune** | Used to validate cross-modal alignment and fusion components during development. |
 | **Held-out evaluation** | Never touched during pretraining. The encoder is evaluated on these completely unseen datasets, calibrated only on a handful of that dataset's own *normal* samples — a genuine zero-fault-label test of generalization. |
 
-### 1.1 Pretraining datasets (domain-adversarial backbone)
+### 2.2 Pretraining datasets (domain-adversarial backbone)
 
 | Dataset | Modality | Sample rate | Notes |
 |---|---|---|---|
@@ -53,32 +112,56 @@ Datasets are used for three distinct purposes, kept strictly separate to avoid l
 | **Paderborn University** | Vibration, **motor current, force, torque** | 64 kHz (vib) | The only dataset here with four synchronized modalities on the same fault event. Used to confirm the domain-adversarial approach transfers to non-vibration sensing (a from-scratch torque-domain classifier reached 98.7% in-domain accuracy). |
 | **SUBF** | Audio | ~4.8 kHz (physically verified via FFT harmonic-peak analysis; the file headers claim 44.1 kHz, which does not match the recorded content) | Squeal and bearing-fault audio, used to seed the audio branch's domain-invariance training. |
 
-### 1.2 Tuning datasets (multimodal fusion development)
+### 2.3 Tuning datasets (multimodal fusion development)
 
 | Dataset | Modality | Notes |
 |---|---|---|
-| **MaFaulDa** (Machinery Fault Database) | Vibration (tri-axial) + audio, synchronized | Six machine states: normal, imbalance, horizontal/vertical misalignment, inner/outer/ball bearing fault. Used to develop and later re-evaluate cross-modal fusion (Section 5). |
-| **UORED-VAFCLS** (University of Ottawa) | Vibration + audio, synchronized | Constant load/speed rolling-element faults; used to validate paired audio-vibration signal alignment. |
+| **MaFaulDa** (Machinery Fault Database) | Vibration (tri-axial) + audio, synchronized | Six machine states: normal, imbalance, horizontal/vertical misalignment, inner/outer/ball bearing fault. Used to develop and later re-evaluate cross-modal fusion (Section 6). |
 
-### 1.3 Held-out evaluation datasets (zero-shot test)
+### 2.4 Held-out evaluation datasets (zero-shot test)
 
 | Dataset | Modality | Files | Notes |
 |---|---|---|---|
 | **Car Diagnostics Dataset** | Audio | 1,386 real automotive recordings | Consumer-recorded faults: worn serpentine belts, squealing brakes, and more, in real cars. Never seen during pretraining. |
 | **Engine Journal Bearings Dataset** (Mendeley) | Vibration | 134 files (healthy + faulty), multiple RPM/temperature/humidity conditions | Vibration recordings from a real automobile engine's journal bearings — the only held-out dataset that is itself an actual vehicle engine rather than a laboratory rig. |
-| **MathWorks Rolling-Element Bearing Fault Dataset** | Vibration | Small (3 normal files total) | Controlled inner-race/outer-race/rolling-element faults under varying load and speed; kept as a held-out sanity check despite its small size (see Section 9). |
+| **MathWorks Rolling-Element Bearing Fault Dataset** | Vibration | Small (3 normal files total) | Controlled inner-race/outer-race/rolling-element faults under varying load and speed; kept as a held-out sanity check despite its small size (see Section 10). |
 
-### 1.4 Rejected dataset (data quality control)
+### 2.5 Datasets considered and not used
 
-An "Engine Acoustic Emissions" Kaggle dataset was fetched and inspected before use. Its
-`.mat` file keys (`normal`, `inner`, `roller`, `outer`) exactly mirror the CWRU
-bearing-fault taxonomy — it is a relabeled bearing test-rig simulation, not real engine
-audio as advertised. It was excluded to keep every "held-out, real-world" claim in this
-project honest.
+Not every dataset acquired made it into pretraining or evaluation. Kept visible here
+rather than silently dropped:
+
+| Dataset | Status | Reason |
+|---|---|---|
+| **Engine Acoustic Emissions** (Kaggle) | Rejected after inspection | Its `.mat` file keys (`normal`, `inner`, `roller`, `outer`) exactly mirror the CWRU bearing-fault taxonomy — it's a relabeled bearing test-rig simulation, not real engine audio as advertised. Excluded to keep every "held-out, real-world" claim in this project honest. Kept as evidence in `sample_data/engine_acoustic_emissions/` rather than deleted. |
+| **UORED-VAFCLS** (University of Ottawa, multimodal) | Acquisition incomplete | Identified as a relevant paired audio-vibration rolling-element-fault dataset; the download did not complete during this project's build window, so no reader/label code was ever written against it. Not used anywhere in this project's results. |
+| **Multi-Sensor Metal Milling Anomaly** (Kaggle) | Acquisition incomplete | A vibration+audio metal-milling anomaly dataset; only a partial download (3 files from a 14GB dataset) was attempted and it did not complete. Not used anywhere in this project's results. |
+| **Vehicle Interior Sound** (Zenodo) | Considered, not used | Normal-condition audio diversity only — no fault labels — so it doesn't fit this project's anomaly-detection evaluation, which needs both normal and faulty examples per dataset. |
+
+### 2.6 Sample data in this repo
+
+The full raw data (~26GB) is not committed (Section 9), but a real, representative
+**~426MB sample of every dataset above** — actual WAV/CSV/.mat/.npz files, never
+synthetic — is committed directly under [`sample_data/`](sample_data/), along with a
+**full-coverage Parquet manifest** (13,900+ rows, every file this project uses, across
+every dataset, with its label and role) under [`sample_data/manifest/`](sample_data/manifest/).
+See [`sample_data/README.md`](sample_data/README.md) for exactly what's in each folder and
+how it was selected.
+
+### 2.7 Planned: validation on manually-collected real-world data
+
+Everything in Section 7 is evaluated on public research datasets. Because the deployed
+detector only ever needs *normal*-condition data to calibrate — never fault labels
+(Section 3) — a small set of real recordings manually collected from one specific
+machine (a lab motor/pump, or a two-wheeler) is enough to validate the pipeline
+end-to-end on genuinely self-collected data, even though it would never be enough to
+*train* anything (which is exactly why manual collection was not attempted for
+pretraining — see Section 2.1). This is planned and not yet done; this section will be
+updated with those results once collected.
 
 ---
 
-## 2. Architecture
+## 3. Architecture
 
 The system is a two-stage Edge + Cloud pipeline:
 
@@ -100,18 +183,29 @@ fraction of genuinely anomalous events.
 ### Why a custom encoder instead of a pretrained audio backbone alone
 
 We evaluated a fine-tuned VGGish (AudioSet-pretrained CNN) backbone as an alternative to
-training our own encoder from scratch (Section 5). It is a capable model — its last
+training our own encoder from scratch (Section 6). It is a capable model — its last
 convolutional block, fine-tuned with the same domain-adversarial objective, reaches
 1.000 AUC in-domain on SUBF and 0.815 AUC on MaFaulDa — but our custom vibration-domain
 encoder, combined with per-vehicle PCA calibration, outperformed it on the two largest
 held-out datasets (0.953 and 0.933 AUC vs. 0.824 on the strongest VGGish-based
-configuration; see Section 6). We therefore use the custom encoder for vibration and
+configuration; see Section 7). We therefore use the custom encoder for vibration and
 audio, and treat the fine-tuned VGGish backbone as a validated but currently unused
 alternative rather than discarding the experiment.
 
+### Related work
+
+Zero-shot bearing-fault detection has been approached differently elsewhere — notably a
+[Qatar University study (arXiv:2212.06154)](https://arxiv.org/abs/2212.06154), which
+trains a 1D operational GAN to synthesize a target machine's faulty signal from its own
+normal signal plus a source machine's normal-to-fault transition, then trains a
+Self-ONN classifier on the synthesized data. Our approach instead never synthesizes fault
+data: it scores real embeddings against a reconstruction-error threshold calibrated only
+on the target machine's real normal data — a different tradeoff (no synthetic-fault-quality
+risk to manage, at the cost of not learning an explicit fault-type classifier at the edge).
+
 ---
 
-## 3. Training pipeline
+## 4. Training pipeline
 
 ```mermaid
 flowchart TD
@@ -138,9 +232,20 @@ term switches on, and a per-step lambda ramp (Ganin & Lempitsky, 2016) are used 
 the six-domain adversarial training stable — an earlier two-domain-only version of this
 training loop collapsed to always predicting the majority domain without these.
 
+### How this was built inside a 48-hour window
+
+Nine-plus datasets, six training domains, and multiple evaluation sweeps looks like more
+compute than a 48-hour window allows — it isn't, because very little of it ran serially.
+Dataset downloads are network/I/O-bound, not CPU-bound, so later datasets were fetched
+while earlier ones were already being preprocessed. Preprocessing and evaluation were
+parallelized across 10 CPU cores at once ([`cpu_guard.py`](src/cpu_guard.py)
+enforces a safety ceiling on this so it never saturates the machine or overheats it),
+yielding roughly an order of magnitude more effective compute than the wall-clock time
+spent would suggest for strictly serial execution.
+
 ---
 
-## 4. Inference pipeline
+## 5. Inference pipeline
 
 ```mermaid
 flowchart TD
@@ -184,7 +289,7 @@ value is ≈2.1×10⁻¹³, well below the anomalous file's score. With a `TYPES
 
 ---
 
-## 5. Model development and experimental validation
+## 6. Model development and experimental validation
 
 Four modeling approaches were built and evaluated before arriving at the final design:
 
@@ -224,16 +329,16 @@ score, so the deployed system scores each modality independently rather than fus
 (1) a randomly-initialized, untrained encoder of identical architecture, to isolate how
 much of any result comes from learned domain-adversarial features versus generic CNN
 structure alone; (2) published unsupervised anomaly-detection benchmarks from the
-acoustic/vibration literature (Section 6). This surfaced a real, reported limitation —
+acoustic/vibration literature (Section 7). This surfaced a real, reported limitation —
 the from-scratch vibration encoder alone underperforms a random encoder on MaFaulDa
 (0.615 vs. 0.863 AUC) — which is exactly why the deployed system never scores on the raw
 encoder output directly. Every deployed detector re-calibrates a PCA memory bank on the
 target dataset's own normal data before scoring anything, which is what the strong
-numbers in Section 6 actually depend on.
+numbers in Section 7 actually depend on.
 
 ---
 
-## 6. Results
+## 7. Results
 
 ### Held-out zero-shot anomaly detection (final architecture)
 
@@ -269,11 +374,15 @@ constraint this project is built around.
 
 ---
 
-## 7. Repository structure
+## 8. Repository structure
 
 ```
 .
 ├── requirements.txt
+├── sample_data/                       # Committed real-data sample (~426MB) — see Section 2.6
+│   ├── README.md
+│   ├── manifest/                      # Full-coverage Parquet manifest + SCHEMA.md
+│   └── <dataset>/...                  # Representative real files, one folder per dataset
 ├── src/                              # Core library code (no side effects on import)
 │   ├── cpu_guard.py                  # CPU/RAM safety guard used by every long-running script
 │   ├── data/
@@ -311,17 +420,18 @@ constraint this project is built around.
 │   ├── inference/
 │   │   └── predict.py                # End-to-end Edge + Cloud demo script
 │   └── utils/
-│       ├── build_memory_bank.py          # Fits and saves the real PCA memory banks
-│       ├── download_milling_subset.py    # Downloads a representative dataset subset
-│       └── export_dataset_manifest.py    # Writes Parquet manifests of dataset contents
+│       ├── build_memory_bank.py              # Fits and saves the real PCA memory banks
+│       ├── build_evaluator_data_sample.py    # Builds sample_data/ from a full data/raw/
+│       ├── download_milling_subset.py        # Downloads a representative dataset subset
+│       └── export_dataset_manifest.py        # Writes the Parquet manifest in sample_data/manifest/
 └── data/                              # Not committed — see Setup below
-    ├── raw/                           # Downloaded datasets
+    ├── raw/                           # Downloaded datasets (full ~26GB)
     └── processed/                     # Checkpoints, memory banks, feature caches
 ```
 
 ---
 
-## 8. Setup and running
+## 9. Setup and running
 
 ### Prerequisites
 
@@ -332,7 +442,14 @@ pip install -r requirements.txt
 pip install typesafe-sdk   # only needed for the live Stage 2 cloud call
 ```
 
-### 1. Get the data
+### 0. Look at real data without downloading anything
+
+[`sample_data/`](sample_data/) ships in this repository — open it directly to see real
+sensor files from every dataset this project uses, and
+[`sample_data/manifest/`](sample_data/manifest/) for the full-coverage Parquet structural
+manifest, before downloading anything.
+
+### 1. Get the full data
 
 Raw datasets (~26 GB total across all sources) are not committed to this repository.
 Fetch a representative subset with:
@@ -379,7 +496,7 @@ response and Stage 1's real anomaly score is unaffected.
 
 ---
 
-## 9. Known limitations
+## 10. Known limitations
 
 - **MaFaulDa and MathWorks calibration sets are very small** (5 and 1 normal files
   respectively), so their AUCs (0.675 and 0.891) are less statistically reliable than the
@@ -389,8 +506,33 @@ response and Stage 1's real anomaly score is unaffected.
   results, which is why vibration is the primary modality and audio is treated as a
   secondary/supporting signal.
 - **The from-scratch vibration encoder alone is not reliably better than a random
-  encoder** on every dataset (Section 5) — all deployed detectors depend on per-domain
+  encoder** on every dataset (Section 6) — all deployed detectors depend on per-domain
   PCA memory-bank calibration, not on the raw encoder embedding space by itself.
 - **Stage 2 requires a TypeSafe or OpenRouter API key** for live cloud classification;
   without one, `predict.py` runs Stage 1 for real but reports a clearly labeled mock
   result for Stage 2.
+
+---
+
+## 11. Data licensing & attribution
+
+| Dataset | License | Source | Notes |
+|---|---|---|---|
+| CWRU | Free for research use | [Case Western Reserve University Bearing Data Center](https://engineering.case.edu/bearingdatacenter) | |
+| IMS | Public domain | NASA Prognostics Data Repository | |
+| FEMTO / PRONOSTIA | Open research use | IEEE PHM 2012 Prognostic Challenge | |
+| **Paderborn (KAt)** | **CC BY-NC 4.0 — non-commercial only** | Lessmeier et al., Paderborn University Bearing Data Center | **See flag below** |
+| SUBF | Kaggle research use | `sumairaziz/subf-v2-0-dataset-bearing-faults-sound-data` | |
+| MaFaulDa | Public | UFRJ Signals, Multimedia and Telecommunications Lab | |
+| AI Mechanic | Kaggle research use | `eoinedge/ai-mechanic-engine-condition-audio-fault-finding` | Real BMW M54B25 engine |
+| Car Diagnostics | Kaggle research use | `malakragaie/car-diagnostics-dataset` | |
+| Engine Journal Bearings | CC BY 4.0 | Riaz et al., Mendeley Data, DOI [10.17632/3fcrrdjjvk.5](https://data.mendeley.com/datasets/3fcrrdjjvk/5) | |
+| MathWorks Rolling-Element Bearing | Redistributed with permission | [github.com/mathworks/RollingElementBearingFaultDiagnosis-Data](https://github.com/mathworks/RollingElementBearingFaultDiagnosis-Data) | Originally collected by Eric Bechhoefer; MathWorks has permission to redistribute for their Predictive Maintenance Toolbox example. Contact Bechhoefer directly for other commercial uses, per the source repository's own README. |
+| Engine Acoustic Emissions | N/A | `julienjta/engine-acoustic-emissions` (Kaggle) | Rejected after inspection (Section 2.5); not used in any result. |
+
+**License conflict, flagged explicitly:** Paderborn/KAt's data is licensed **CC BY-NC 4.0
+(non-commercial only)**, and it is one of the four core pretraining domains for the
+primary vibration encoder. Research/hackathon use fits within that license, but any future
+commercial deployment of a model whose vibration encoder was pretrained on Paderborn data
+would need to either retrain the encoder without Paderborn or obtain separate permission
+from Paderborn University.

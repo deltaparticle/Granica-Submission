@@ -11,8 +11,10 @@ any code.
 
 Run after the datasets in download_manifest.py are on disk:
     python export_dataset_manifest.py
-Writes to data/processed/manifest/*.parquet (gitignored, like all generated
-data) plus data/processed/manifest/SCHEMA.md (small enough to check in).
+Writes to sample_data/manifest/*.parquet plus sample_data/manifest/SCHEMA.md
+— unlike data/raw/ and data/processed/, sample_data/ is NOT gitignored, since
+this manifest (row-level structure, not raw signals) is small enough and
+important enough to commit directly (see README Section 2.6).
 """
 
 import sys, os
@@ -35,7 +37,7 @@ from data.readers import (
 )
 
 RAW_DIR = Path(__file__).resolve().parents[2] / "data" / "raw"
-OUT_DIR = Path(__file__).resolve().parents[2] / "data" / "processed" / "manifest"
+OUT_DIR = Path(__file__).resolve().parents[2] / "sample_data" / "manifest"
 
 SCHEMA_MD = """\
 # Dataset manifest schema
@@ -45,8 +47,8 @@ pipeline. Columns:
 
 | Column | Type | Meaning |
 |---|---|---|
-| `dataset` | string | Which of the 8 datasets in `download_manifest.py` this file belongs to |
-| `pool` | string | `"training"` (industrial pretraining pool) or `"held_out"` (real-vehicle evaluation pool, never trained on) |
+| `dataset` | string | Which dataset (see `src/data/download_manifest.py` for the full registry) this file belongs to |
+| `pool` | string | `"training"` (industrial pretraining pool), `"held_out"` (real-vehicle evaluation pool, never trained on), or `"rejected"` (acquired, inspected, and explicitly excluded — see `label_scheme` for why) |
 | `modality` | string | `"vibration"`, `"audio"`, or `"vibration+audio"` (MaFaulDa, the one paired dataset) |
 | `relative_path` | string | File path relative to `data/raw/<dataset>/` |
 | `label` | int | This project's derived label for the file (dataset-specific meaning — see `label_scheme` column). `-1` means excluded (ambiguous, per that dataset's reader) |
@@ -150,6 +152,21 @@ def main() -> None:
         files = sorted(ejb_root.rglob("*.csv"))
         df = _rows_for("engine_journal_bearings", "held_out", "vibration", files, ejb_root,
                         engine_journal_bearings_label_fn, "engine_journal_bearings_label_fn")
+        frames.append(df)
+
+    mw_root = RAW_DIR / "mathworks_data"
+    if mw_root.exists():
+        files = sorted(mw_root.rglob("*.mat"))
+        mathworks_label_fn = lambda f: 0 if f.name.startswith("baseline_") else 1
+        df = _rows_for("mathworks_bearing", "held_out", "vibration", files, mw_root,
+                        mathworks_label_fn, "mathworks_label_fn (baseline_*=0, else=1)")
+        frames.append(df)
+
+    eae_root = RAW_DIR / "engine_acoustic_emissions"
+    if eae_root.exists():
+        files = sorted(eae_root.rglob("*.mat"))
+        df = _rows_for("engine_acoustic_emissions", "rejected", "audio", files, eae_root,
+                        lambda f: -3, "rejected_mislabeled_bearing_rig_simulator")
         frames.append(df)
 
     for df in frames:
