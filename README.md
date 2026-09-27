@@ -323,17 +323,26 @@ spent would suggest for strictly serial execution.
 ## 5. Inference pipeline
 
 ```mermaid
-flowchart LR
-    FILE["sensor file"]
-    READER["reader"]
-    PREP["preprocessing"]
-    ENC2["frozen encoder"]
-    SCORE["memory bank score"]
-    DECIDE{"score under threshold?"}
-    STOP["stop on edge"]
+flowchart TD
+    subgraph INPUT["input + preprocessing"]
+        direction LR
+        FILE["sensor file"]
+        READER["reader"]
+        PREP["preprocessing"]
+        FILE --> READER --> PREP
+    end
+
+    subgraph SCORING["edge scoring"]
+        direction LR
+        ENC2["frozen encoder"]
+        SCORE["memory bank score"]
+        DECIDE{"score under threshold?"}
+        ENC2 --> SCORE --> DECIDE
+    end
 
     CKPT2["encoder checkpoint"]
     BANK2["memory bank"]
+    STOP["stop on edge"]
 
     subgraph CLOUD["cloud: TypeSafe Jev"]
         direction TB
@@ -343,7 +352,7 @@ flowchart LR
         CTX --> JEV --> OUT
     end
 
-    FILE --> READER --> PREP --> ENC2 --> SCORE --> DECIDE
+    INPUT --> SCORING
     DECIDE -->|normal| STOP
     DECIDE -->|anomaly| CTX
     CKPT2 -.->|loaded by| ENC2
