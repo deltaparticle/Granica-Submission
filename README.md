@@ -323,7 +323,7 @@ spent would suggest for strictly serial execution.
 ## 5. Inference pipeline
 
 ```mermaid
-flowchart TD
+flowchart LR
     FILE["sensor file"]
     READER["reader"]
     PREP["preprocessing"]
@@ -336,7 +336,7 @@ flowchart TD
     BANK2["memory bank"]
 
     subgraph CLOUD["cloud: TypeSafe Jev"]
-        direction LR
+        direction TB
         CTX["package context"]
         JEV["Jev decision model"]
         OUT["structured output"]
