@@ -1,4 +1,4 @@
-[cpu_guard] RAM: 76% used, 3.8GB available (real-world washing machine eval setup)
+[cpu_guard] RAM: 77% used, 3.6GB available (real-world washing machine eval setup)
 Loading encoders...
 Reading recordings...
   faulty:  vibration running 14.3s, silent 11.0s | audio running 14.2s, silent 10.9s
@@ -16,7 +16,11 @@ CHECK 1 — Deployed memory banks (Car Diagnostics / Engine Journal Bearings)
   running (dryer ON, faulty): mean score = 0.0067175  (100% of windows flagged ANOMALY)
   silent  (dryer OFF, ambient): mean score = 0.0032945  (100% of windows flagged ANOMALY)
 
-[Audio] (running audio denoised)  threshold = 1.15251e-05
+[Audio (RAW, original faulty-only test)]  threshold = 1.15251e-05
+  running (dryer ON, faulty): mean score = 1.70749e-05  (94% of windows flagged ANOMALY)
+  silent  (dryer OFF, ambient): mean score = 1.69824e-05  (92% of windows flagged ANOMALY)
+
+[Audio (denoised)] (running audio denoised)  threshold = 1.15251e-05
   running (dryer ON, faulty): mean score = 4.58853e-05  (100% of windows flagged ANOMALY)
   silent  (dryer OFF, ambient): mean score = 1.69824e-05  (92% of windows flagged ANOMALY)
 

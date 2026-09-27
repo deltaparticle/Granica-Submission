@@ -37,9 +37,10 @@ Each session folder contains the app's raw export: `TotalAcceleration.csv`,
 `Metadata.csv`, `Microphone.csv` (a coarse ~100ms dBFS loudness meter log,
 not audio), `Microphone.mp4` (the actual audio), `Annotation.csv` (unused).
 
-**Known collection issue:** both healthy-machine sessions were recorded in
-a hostel corridor with real ambient noise (people, hallway acoustics)
-audible in the audio track. Addressed in preprocessing below.
+**Known collection issue:** recordings were made in a hostel corridor with
+real ambient noise (people, hallway acoustics) audible in the audio
+tracks. Addressed for the faulty machine's audio in preprocessing below
+(Check 1, Round 1).
 
 ## 2. Preprocessing
 
@@ -81,41 +82,60 @@ Code: `scripts/eval/evaluate_real_world_washing_machine.py`. Full run log:
 
 ## 3. Checks run
 
-**Check 1 — deployed memory banks.** Score the faulty machine's recordings
-against the real, already-built `vibration_memory_bank.joblib` /
-`audio_memory_bank.joblib` (calibrated on Engine Journal Bearings /
-Car Diagnostics respectively) — the exact banks `predict.py` loads. A
-cross-machine, cross-sensor zero-shot test: this washing machine
-contributed zero data to that calibration.
+Testing happened in two rounds: Round 1 right after the faulty machine was
+recorded (before any healthy machine existed to calibrate against), Round 2
+after the healthy machine was recorded.
 
-**Check 2 — self-consistency.** Fit a PCA detector on the faulty machine's
-own silent windows only, score its running windows against that — is
-"running" distinguishable from this exact machine's own quiet state,
-independent of any external calibration.
+**Round 1 — faulty machine only**
 
-**Check 3 — train on healthy, test on faulty.** Fit the PCA memory bank on
-the HEALTHY machine's running windows (a genuine normal-operating-condition
-calibration, not silence), then score the FAULTY machine's running windows
-against it. This is the project's actual deployed architecture, run for
-real for the first time on self-collected data.
+- **Check 1 — deployed memory banks.** Score the faulty machine's
+  recordings against the real, already-built `vibration_memory_bank.joblib`
+  / `audio_memory_bank.joblib` (calibrated on Engine Journal Bearings /
+  Car Diagnostics respectively) — the exact banks `predict.py` loads. A
+  cross-machine, cross-sensor zero-shot test: this washing machine
+  contributed zero data to that calibration. Run twice: once with raw
+  audio (the original test), once with denoised audio after that
+  preprocessing step was added.
+- **Check 2 — self-consistency.** Fit a PCA detector on the faulty
+  machine's own silent windows only, score its running windows against
+  that — is "running" distinguishable from this exact machine's own quiet
+  state, independent of any external calibration.
+
+**Round 2 — faulty + healthy machine**
+
+- **Check 3 — train on healthy, test on faulty.** Fit the PCA memory bank
+  on the HEALTHY machine's running windows (a genuine normal-operating-
+  condition calibration, not silence), then score the FAULTY machine's
+  running windows against it. This is the project's actual deployed
+  architecture, run for real for the first time on self-collected data.
 
 ## 4. Results
 
-### Check 1 — deployed memory banks (faulty machine only)
+### Round 1 — faulty machine only
+
+**Check 1 — deployed memory banks**
 
 | Modality | Threshold | Running (faulty, on) | Silent (off, ambient) |
 |---|---|---|---|
 | Vibration | 2.12e-13 | mean 0.00672 — 100% flagged anomaly | mean 0.00329 — 100% flagged anomaly |
+| Audio (RAW, original test) | 1.15e-5 | mean 1.71e-5 — 94% flagged anomaly | mean 1.70e-5 — 92% flagged anomaly |
 | Audio (denoised) | 1.15e-5 | mean 4.59e-5 — 100% flagged anomaly | mean 1.70e-5 — 92% flagged anomaly |
 
-### Check 2 — self-consistency (faulty machine only)
+Raw audio barely separated running from silent (94% vs. 92% flagged, scores
+within 0.5% of each other) — denoising widened that gap (100% vs. 92%,
+running now 2.7x silent's score) without touching vibration or silent's
+own score.
+
+**Check 2 — self-consistency**
 
 | Modality | Threshold (90th pct of silent) | Running vs. silent-calibration |
 |---|---|---|
 | Vibration | 1.03e-13 | mean 0.205 — 100% flagged anomaly |
 | Audio | 3.53e-13 | mean 0.00087 — 100% flagged anomaly |
 
-### Check 3 — train on healthy, test on faulty
+### Round 2 — faulty + healthy machine
+
+**Check 3 — train on healthy, test on faulty**
 
 | Modality | Threshold (90th pct of healthy-running) | **Faulty running (the target test)** | Healthy silent (reference) | Faulty silent (reference) |
 |---|---|---|---|---|

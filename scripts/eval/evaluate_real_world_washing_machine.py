@@ -165,9 +165,14 @@ def main():
     vib_bank = PCAReconstructionMemoryBank.load(MEMORY_BANK_DIR / "vibration_memory_bank.joblib")
     aud_bank = PCAReconstructionMemoryBank.load(MEMORY_BANK_DIR / "audio_memory_bank.joblib")
 
+    # Audio is reported twice here: RAW (the original faulty-machine-only
+    # test, before any healthy machine was recorded or denoising existed)
+    # and DENOISED (after denoising was introduced) — both real, both kept,
+    # not just the more flattering one.
     for name, bank, running_emb, silent_emb, note in [
         ("Vibration", vib_bank, vib_running_emb, vib_silent_emb, ""),
-        ("Audio", aud_bank, aud_running_emb_dn, aud_silent_emb, " (running audio denoised)"),
+        ("Audio (RAW, original faulty-only test)", aud_bank, aud_running_emb, aud_silent_emb, ""),
+        ("Audio (denoised)", aud_bank, aud_running_emb_dn, aud_silent_emb, " (running audio denoised)"),
     ]:
         running_scores = bank.score(running_emb)
         silent_scores = bank.score(silent_emb)

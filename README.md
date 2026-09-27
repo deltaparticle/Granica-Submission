@@ -164,10 +164,40 @@ source. Full collection method, preprocessing, and every check run are in
 [`sample_data/real_world_validation/LOG.md`](sample_data/real_world_validation/LOG.md);
 the recordings and the full run log are committed alongside it.
 
-**Train-on-healthy, test-on-faulty** (the project's actual deployed architecture, run
-end-to-end on self-collected data for the first time): the PCA memory bank was
-calibrated on the healthy machine's own running windows, then the faulty machine's
-running windows were scored against it.
+Testing happened in two rounds — right after the faulty machine was recorded, and
+again once the healthy machine was recorded — and both rounds' results are kept below.
+
+**Round 1 — faulty machine only.**
+
+*Check 1: scored against the pre-built deployment memory banks* (Section 7's Car
+Diagnostics/Engine Journal Bearings calibration — the exact banks `predict.py` loads).
+A cross-machine, cross-sensor zero-shot test, since this washing machine contributed
+zero data to that calibration.
+
+| Modality | Running (faulty, on) | Silent (off, ambient) |
+|---|---|---|
+| Vibration | mean 0.00672 — 100% flagged anomaly | mean 0.00329 — 100% flagged anomaly |
+| Audio (raw, original test) | mean 1.71e-5 — 94% flagged anomaly | mean 1.70e-5 — 92% flagged anomaly |
+| Audio (denoised against its own silent clip) | mean 4.59e-5 — 100% flagged anomaly | mean 1.70e-5 — 92% flagged anomaly |
+
+Raw audio barely separated running from silent (scores within 0.5% of each other);
+spectral-gate denoising (against the machine's own silent recording as a noise
+profile) widened that to running scoring 2.7x silent's score.
+
+*Check 2: self-consistency* — fit a PCA detector on the faulty machine's own silent
+windows only, score its running windows against that.
+
+| Modality | Running vs. silent-calibration |
+|---|---|
+| Vibration | mean 0.205 — 100% flagged anomaly |
+| Audio | mean 0.00087 — 100% flagged anomaly |
+
+**Round 2 — faulty + healthy machine.**
+
+*Check 3: train-on-healthy, test-on-faulty* — the project's actual deployed
+architecture, run end-to-end on self-collected data for the first time. The PCA
+memory bank was calibrated on the healthy machine's own running windows, then the
+faulty machine's running windows were scored against it.
 
 | Modality | Faulty running (the target test) | Healthy silent (reference) | Faulty silent (reference) |
 |---|---|---|---|
@@ -176,14 +206,9 @@ running windows were scored against it.
 
 Vibration ranks the faulty machine's running state as clearly the highest-scoring of
 the three real recordings (5x above the faulty machine's own silent state, 26x above
-the healthy machine's silent state) — the first time this exact calibrate-on-healthy,
-flag-the-anomaly loop has been run on real, self-collected data end to end, and it
-correctly identified the known-faulty machine. Audio's three scores were close
-together without a clear ranking. The faulty machine's audio was also scored against
-the pre-built deployment memory banks (Section 7's Car Diagnostics/Engine Journal
-Bearings calibration) after spectral-gate denoising against its own silent recording
-as a noise profile: running scored 4.59e-5 vs. silent's 1.70e-5 (100% vs. 92% flagged),
-a real separation where raw audio had shown almost none.
+the healthy machine's silent state) — and this is the first time this exact
+calibrate-on-healthy, flag-the-anomaly loop has been run on real, self-collected data
+end to end. Audio's three scores were close together without a clear ranking.
 
 ---
 
