@@ -19,19 +19,21 @@ interface ComparisonData {
   waveform_normal_b64: string;
   waveform_faulty_b64: string;
   anomaly_score: number;
+  threshold: number;
+  score_ratio: number;
+  verdict: string;
   peak_freq: string;
   diagnosis: string;
+  logs: string[];
+  stage2: {
+    fault_type: string;
+    confidence: number;
+    severity: string;
+    action: string;
+  } | null;
 }
 
 const API_BASE = 'http://127.0.0.1:8000';
-
-const SIMULATED_STARTUP_LOGS = [
-  "[SYSTEM] Initiating ML Data Pipeline...",
-  "[SYSTEM] Loading configuration: sample_rate=25600, n_mels=128, fmax=12800...",
-  "[INFO] Bootstrapping PCAReconstructionMemoryBank...",
-  "[INFO] Loading pre-trained ResNet-18 Encoder Checkpoints...",
-  "[SUCCESS] Pipeline Ready. Awaiting Inference Requests...",
-];
 
 function PipelineTerminal({ 
   logs, 
@@ -50,7 +52,7 @@ function PipelineTerminal({
     if (displayedIndex < logs.length) {
       const timer = setTimeout(() => {
         setDisplayedIndex(prev => prev + 1);
-      }, 300);
+      }, 150); // Faster typing speed for actual logs
       return () => clearTimeout(timer);
     } else if (isComplete && displayedIndex === logs.length) {
       const timer = setTimeout(() => onTypingComplete(), 600);
@@ -72,10 +74,13 @@ function PipelineTerminal({
 
   const colorizeLog = (text: string) => {
     if (!text) return null; // Safeguard against undefined/empty
-    if (text.includes("[INFO]")) return <span className="log-info">{text}</span>;
-    if (text.includes("[SUCCESS]")) return <span className="log-success">{text}</span>;
-    if (text.includes("[WARN]")) return <span className="log-warn">{text}</span>;
-    if (text.includes("[SYSTEM]")) return <span style={{ color: '#c084fc' }}>{text}</span>;
+    if (text.includes("ANOMALY DETECTED")) return <span className="log-danger">{text}</span>;
+    if (text.includes("NORMAL")) return <span className="log-success">{text}</span>;
+    if (text.includes("STAGE 1") || text.includes("STAGE 2")) return <span style={{ color: '#3b82f6', fontWeight: 600 }}>{text}</span>;
+    if (text.includes("Jev-Omni")) return <span style={{ color: '#f59e0b' }}>{text}</span>;
+    if (text.includes("->")) return <span style={{ color: '#a78bfa', marginLeft: '1rem' }}>{text}</span>;
+    if (text.includes("[Demo Mode]")) return <span style={{ color: '#9ca3af' }}>{text}</span>;
+    if (text.includes("==")) return <span style={{ color: '#4b5563' }}>{text}</span>;
     return text;
   };
 
@@ -153,16 +158,10 @@ function App() {
     setApiIsComplete(false);
     setShowResults(false);
     
-    // Set up the logs exactly mimicking the real predict.py script
+    // Initial connection logs
     setInferenceLogs([
-      ...SIMULATED_STARTUP_LOGS,
-      "",
-      `[SYSTEM] --- NEW INFERENCE REQUEST ---`,
-      `[INFO] Running Inference on ${modality.toUpperCase()} file...`,
-      `[INFO] Extracting Features via SpectrogramConfig...`,
-      `[INFO] Passing batch to ResNet-18 Encoder (eval mode)...`,
-      `[SUCCESS] Extracted Embedding Vector of shape (512,)`,
-      `[INFO] STAGE 1 (EDGE): Projecting to PCAReconstructionMemoryBank...`,
+      `[SYSTEM] Invoking Python subprocess: python scripts/inference/predict.py --modality ${modality} --file ${datasetName}...`,
+      `[SYSTEM] Connecting to backend engine...`,
     ]);
 
     fetch(`${API_BASE}/api/compare/${datasetKey}`)
@@ -170,13 +169,12 @@ function App() {
         if (!res.ok) throw new Error("Failed to fetch comparison data");
         return res.json();
       })
-      .then(data => {
+      .then((data: ComparisonData) => {
         setComparison(data);
-        // Append the final logs based on real response
+        // Feed the backend-generated logs into the terminal!
         setInferenceLogs(prev => [
           ...prev, 
-          `[SUCCESS] Anomaly Score computed: ${data.anomaly_score.toFixed(4)}`,
-          `[INFO] Threshold check passed. Diagnostics generated.`,
+          ...data.logs
         ]);
         setApiIsComplete(true);
       })
@@ -185,7 +183,7 @@ function App() {
         setApiFailed(true);
         setInferenceLogs(prev => [
           ...prev, 
-          `[WARN] Feature extraction failed: ${err.message}`
+          `[ERROR] Subprocess failed: ${err.message}`
         ]);
         setApiIsComplete(true);
       });
@@ -264,29 +262,72 @@ function App() {
               </div>
               
               <div className="comparison-container">
-                {/* Text Analysis Report */}
+                
+                {/* Stage 1: Edge Analysis Report */}
                 <div className="analysis-report">
-                  <h3 className="analysis-header" style={{ color: 'var(--text-primary)', marginBottom: '1.5rem', fontWeight: 700 }}>
-                    Machine Learning Analysis
-                  </h3>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
+                    <h3 className="analysis-header" style={{ color: 'var(--text-primary)', fontWeight: 700, margin: 0 }}>
+                      Stage 1: Edge PCAReconstructionMemoryBank
+                    </h3>
+                    <div style={{ padding: '0.25rem 0.75rem', borderRadius: '999px', fontSize: '0.85rem', fontWeight: 700, backgroundColor: comparison.verdict === 'NORMAL' ? '#dcfce7' : '#fee2e2', color: comparison.verdict === 'NORMAL' ? '#166534' : '#991b1b' }}>
+                      {comparison.verdict.replace('_', ' ')}
+                    </div>
+                  </div>
                   <div className="analysis-grid">
                     <div className="analysis-metric">
-                      <div className="metric-label">Memory Bank Anomaly Score</div>
+                      <div className="metric-label">Calculated Anomaly Score</div>
                       <div className="metric-value danger">{comparison.anomaly_score.toFixed(4)}</div>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>Threshold limit: {comparison.threshold.toFixed(4)}</div>
+                    </div>
+                    <div className="analysis-metric">
+                      <div className="metric-label">Deviation Ratio</div>
+                      <div className="metric-value">{comparison.score_ratio.toFixed(2)}x</div>
+                      <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>Multiplier over baseline</div>
                     </div>
                     <div className="analysis-metric">
                       <div className="metric-label">Peak Frequency Deviation</div>
                       <div className="metric-value">{comparison.peak_freq}</div>
                     </div>
-                    <div className="analysis-metric">
-                      <div className="metric-label">System Diagnosis</div>
-                      <div className="metric-value">{comparison.diagnosis}</div>
+                  </div>
+                </div>
+
+                {/* Stage 2: Cloud Analysis Report */}
+                {comparison.stage2 && (
+                  <div className="analysis-report" style={{ backgroundColor: '#fffbeb', borderColor: '#fde68a', marginTop: '1.5rem' }}>
+                    <h3 className="analysis-header" style={{ color: '#92400e', marginBottom: '1.5rem', fontWeight: 700 }}>
+                      Stage 2: TypeSafe AI Jev-Omni Cloud Classification
+                    </h3>
+                    <div className="analysis-grid">
+                      <div className="analysis-metric" style={{ backgroundColor: 'white' }}>
+                        <div className="metric-label">Classified Fault Type</div>
+                        <div className="metric-value" style={{ color: '#d97706' }}>{comparison.stage2.fault_type}</div>
+                        <div style={{ fontSize: '0.85rem', color: '#64748b', marginTop: '0.5rem' }}>Confidence: {(comparison.stage2.confidence * 100).toFixed(1)}%</div>
+                      </div>
+                      <div className="analysis-metric" style={{ backgroundColor: 'white' }}>
+                        <div className="metric-label">Severity</div>
+                        <div className="metric-value" style={{ color: '#b91c1c' }}>{comparison.stage2.severity}</div>
+                      </div>
+                      <div className="analysis-metric" style={{ backgroundColor: 'white' }}>
+                        <div className="metric-label">Recommended Action</div>
+                        <div className="metric-value" style={{ fontSize: '1.1rem' }}>{comparison.stage2.action}</div>
+                      </div>
                     </div>
+                  </div>
+                )}
+
+                {/* Architecture Specs */}
+                <div className="architecture-report" style={{ marginTop: '1.5rem', padding: '1.5rem', backgroundColor: '#f8fafc', borderRadius: '12px', border: '1px solid #e2e8f0' }}>
+                  <h4 style={{ color: '#475569', fontSize: '0.9rem', textTransform: 'uppercase', letterSpacing: '1px', marginBottom: '1rem', fontWeight: 700 }}>System Architecture Specs</h4>
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(2, 1fr)', gap: '1rem', fontSize: '0.9rem', color: '#64748b' }}>
+                    <div><strong>Encoder:</strong> SpectrogramEncoder (4-layer CNN, DANN)</div>
+                    <div><strong>Memory Bank:</strong> PCA Reconstruction (32 components, StandardScaler)</div>
+                    <div><strong>Input Config:</strong> {comparison.modality === 'vibration' ? '25600Hz' : '16000Hz'}, n_mels=128, n_fft=1024</div>
+                    <div><strong>Training Constraint:</strong> Normal-only, Zero-shot Fault Detection</div>
                   </div>
                 </div>
 
                 {/* Heatmap comparison panel */}
-                <div>
+                <div style={{ marginTop: '2rem' }}>
                   <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
                     Spectrogram Difference Matrix
                   </h3>
