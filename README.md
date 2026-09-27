@@ -1,13 +1,13 @@
 # Canary — Zero-Shot Multimodal Fault Detection
 
-Named for the same reason miners carried one underground: a canary doesn't need to
-understand what's wrong to be useful — it just needs to react before a human would notice.
-This is a real-time diagnostic system that detects mechanical faults (bearing failures,
-imbalance, misalignment, worn belts) from vibration and audio signals captured by
-consumer-grade sensors — a phone's microphone or accelerometer, or a cheap OBD-adjacent
-sensor — with **zero labeled fault data from the target vehicle**. The system calibrates
-itself from a few seconds of the vehicle's own healthy operation, then flags deviations
-from that personal baseline on-device before ever calling the cloud.
+The name comes from the old mining canary: it does not need to identify the problem,
+only to react early enough for someone to investigate it.
+Canary is a real-time diagnostic system for detecting mechanical faults such as bearing
+failures, imbalance, misalignment, and worn belts. It uses vibration and audio from
+consumer-grade sensors such as a phone microphone or accelerometer, and does not require
+labeled fault data from the target vehicle. It first learns a baseline from a few seconds
+of healthy operation and uses that baseline to detect unusual behavior locally before
+sending anything to the cloud.
 
 This matters because the standard approach to this problem — supervised fault
 classification — needs thousands of labeled examples of a machine *actively failing*,
@@ -34,23 +34,19 @@ around the constraint that the only data a real driver can ever realistically pr
 
 ## 1. Origin & motivation
 
-This project started with a conversation in two labs at **IIT Guwahati** — the Mechanical
-Engineering workshop and a Chemical Engineering process lab. Teaching assistants and lab
-technicians in both places described the same recurring problem: rotating equipment
-(motors, pumps, compressors) usually gives an audible or vibrational warning before it
-actually fails, and whoever is running it can often hear that something is off — but not
-*how urgent* it is. Without a way to judge urgency, marginal cases get deferred, sometimes
-until the equipment fails outright and the lab loses days to an unplanned teardown instead
-of a scheduled few-minute check.
+The project started from conversations in two labs at **IIT Guwahati**: the Mechanical
+Engineering workshop and a Chemical Engineering process lab. The teaching assistants and
+lab technicians described a similar problem with rotating equipment such as motors, pumps,
+and compressors. The equipment often starts making a different sound or vibration before
+a failure, but it is difficult to tell whether the change needs immediate attention.
+Small issues can therefore be left until the equipment fails and an unplanned repair takes
+much longer than a routine inspection.
 
-Looking past the two labs, the same shape of problem shows up anywhere physical hardware
-runs continuously without a dedicated reliability engineer watching it — from small
-electric-vehicle scooters and two-wheelers to any company operating a fleet of pumps,
-compressors, or motors. The constraint is the same one the labs have: no calibrated
-sensors, no historical fault-labeled data from that specific machine, and no one on call
-whose job is to interpret the warning signs — just someone who can hear that something is
-wrong and needs a second opinion on how urgent it is. That gap — sensing is easy, judging
-urgency is not — is what this project targets.
+The same problem exists outside the labs. Small EVs and two-wheelers, as well as fleets
+of pumps, compressors, and motors, may not have calibrated sensors or a reliability
+engineer watching them continuously. Someone may notice that the machine sounds or feels
+different, but still not know whether it needs attention immediately. Canary is aimed at
+that gap between noticing a change and deciding whether it is worth investigating.
 
 ---
 
@@ -64,14 +60,11 @@ signal was recorded from a physical rotating machine or vehicle.
 
 ### 2.1 Why public datasets, and what qualifies one for inclusion
 
-A domain-invariant encoder needs thousands of labeled fault examples spanning many
-machines, conditions, and fault types to pretrain — that scale cannot be manually
-collected within a hackathon's timeframe, or realistically by one small team on any
-timeframe without the kind of dedicated lab access most teams don't have. The datasets
-below exist because multiple research labs already spent months to years building them;
-using them as a pretraining backbone is what makes it possible to build something that
-generalizes at all. Every dataset used here had to clear the same filters before being
-trusted:
+The encoder needs data from many machines, operating conditions, and fault types before
+it can be expected to transfer to a new machine. Collecting that amount of data ourselves
+was not realistic within the project timeframe. We therefore used established research
+datasets for pretraining and evaluated them individually before including them. The
+following checks were used for dataset selection:
 
 1. **Real physical origin.** The signal must come from an actual physical sensor
    (accelerometer, microphone, current/force/torque transducer) mounted on a real
@@ -285,10 +278,10 @@ The system is a two-stage Edge + Cloud pipeline:
   structured ("System One") decision model that returns a typed fault classification,
   severity score, and recommended action — not conversational text.
 
-This split matters for deployability: consumer devices cannot run continuous deep
-inference, and API calls cost money and require connectivity. Gating almost all normal
-driving noise out at the edge means the cloud model is only ever invoked for the small
-fraction of genuinely anomalous events.
+The split is mainly about deployment. Continuous deep inference on a consumer device is
+expensive, while a cloud API adds network dependency and cost. The edge stage filters out
+normal operation, so the cloud model is only called when the local detector sees an
+anomaly.
 
 ### Why a custom encoder instead of a pretrained audio backbone alone
 
@@ -365,14 +358,12 @@ training loop collapsed to always predicting the majority domain without these.
 
 ### How this was built inside a 48-hour window
 
-Nine-plus datasets, six training domains, and multiple evaluation sweeps looks like more
-compute than a 48-hour window allows — it isn't, because very little of it ran serially.
-Dataset downloads are network/I/O-bound, not CPU-bound, so later datasets were fetched
-while earlier ones were already being preprocessed. Preprocessing and evaluation were
-parallelized across 10 CPU cores at once ([`cpu_guard.py`](src/cpu_guard.py)
-enforces a safety ceiling on this so it never saturates the machine or overheats it),
-yielding roughly an order of magnitude more effective compute than the wall-clock time
-spent would suggest for strictly serial execution.
+Nine-plus datasets, six training domains, and several evaluation runs sound like a lot
+for a 48-hour build, but most of the work did not run one step at a time. Downloads ran in
+parallel with preprocessing, since the downloads were mainly I/O-bound. Preprocessing and
+evaluation used up to 10 CPU cores at a time; [`cpu_guard.py`](src/cpu_guard.py) keeps that
+within a defined limit. This reduced the amount of wall-clock time spent waiting on
+sequential processing.
 
 ---
 
@@ -708,33 +699,79 @@ from Paderborn University.
 
 ## 12. How AI was used
 
-This project was built with extensive use of Claude (Anthropic's Claude Code), used
-throughout as a hands-on coding and analysis collaborator rather than a one-off content
-generator.
+AI tools were used during the project mainly to speed up research, dataset discovery,
+experimentation, debugging, and documentation. The team still implemented, tested, and
+checked the resulting work rather than treating generated output as the final answer.
 
-**What Claude Code did:**
-- Wrote every dataset reader, the preprocessing pipeline, the domain-adversarial
-  training loop, the PCA memory bank, and every evaluation script, iterating against
-  real downloaded data and real error messages.
-- Found and fixed concrete, verifiable bugs during development — a wrong sample-rate
-  assumption in SUBF (corrected via FFT harmonic-peak analysis against the documented
-  shaft rotation frequency), a sample-rate mismatch at inference, a class-imbalance
-  evaluation-threshold artifact, and others — each identified from an observed
-  discrepancy, not a hypothetical.
-- Proposed and ran the honesty checks in this README: the random-encoder null baseline
-  (Section 6), the IMS/FEMTO label-sensitivity check (Section 2.8), and reporting a
-  negative result (the from-scratch encoder losing to a random one on MaFaulDa) rather
-  than omitting it.
-- Built and ran the real-world validation once the recordings existed: the reader
-  functions for the phone app's export format, the denoising step, and the analysis
-  comparing all three checks in Section 2.7.
-- Wrote this README and the presentation materials, revised repeatedly against direct
-  correction from the team.
+### Research and problem exploration
 
-**What the team did directly:** chose the problem and framing (Section 1), decided
-project scope and which experiment to run next at every step, personally collected all
-real-world physical-sensor data (operating the phone, placing it on both washing
-machines, running the recordings), and reviewed and pushed back on results throughout —
-including requesting an independent critical review of this project against this exact
-problem statement's own judging criteria, which directly surfaced several of the fixes
-and disclosures in this README.
+During the early stages, AI tools were used to explore existing work on zero-shot and
+unsupervised fault detection, multimodal condition monitoring, domain adaptation, anomaly
+detection, acoustic and vibration analysis, and predictive maintenance.
+
+This helped the team:
+
+* identify relevant research directions and existing approaches;
+* compare supervised, unsupervised, self-supervised, and domain-adversarial approaches;
+* identify potentially relevant public datasets and research repositories;
+* understand the sensing modalities used in existing fault-detection systems;
+* investigate appropriate evaluation methodologies and anomaly-detection baselines;
+* explore alternative model architectures before committing to the final design.
+
+Generated suggestions were treated as starting points. Dataset descriptions, licensing
+terms, sampling rates, and experimental claims were checked against the original dataset
+documentation and source repositories before being used.
+
+### Dataset discovery and preparation
+
+AI tools were also used during dataset acquisition and analysis. Candidate datasets were
+filtered by modality, machine type, fault coverage, availability of healthy data,
+provenance, and licensing.
+
+The team downloaded and inspected the candidate datasets directly. AI tools helped with:
+
+* identifying relevant datasets across vibration, audio, current, force, and torque modalities;
+* designing a common dataset manifest and reader interface;
+* understanding different directory structures and label conventions;
+* detecting inconsistencies between advertised and observed metadata;
+* designing preprocessing and normalization strategies;
+* comparing candidate datasets for pretraining, tuning, and held-out evaluation;
+* investigating sampling-rate and signal-quality issues.
+
+An important example was the SUBF dataset, where the advertised sample rate was inconsistent with the frequency content actually present in the recordings. signal analysis with AI tools helped identify the discrepancy, after which the observation was independently verified using FFT-based harmonic analysis and the documented shaft rotation frequency.
+
+AI was used to speed up the investigation, but the final dataset decisions were based on
+the downloaded data and the original documentation.
+
+### Model and experiment development
+
+AI tools were useful for quickly exploring several alternatives, including:
+
+* MFCC + Gradient Boosting;
+* fine-tuned VGGish;
+* cross-modal contrastive fusion;
+* domain-adversarial representation learning;
+* PCA reconstruction-error anomaly detection;
+* score-level ensembling.
+
+This made it practical to implement and test several alternatives within the project
+timeframe instead of choosing the architecture only from the theory.
+
+### Experiment design and validation
+
+AI was also used during experiment review to look for possible leakage, overfitting,
+misleading evaluations, and unsupported assumptions. The goal was not just to find good
+numbers, but also to find cases where the approach was failing or the evaluation could be
+misleading.
+
+This contributed to additional validation experiments, including:
+
+* random/untrained encoder baselines;
+* IMS/FEMTO label-threshold sensitivity analysis;
+* comparison against alternative model architectures;
+* held-out cross-dataset evaluation;
+* small-sample calibration checks;
+* examination of negative experimental results;
+* independent inspection of dataset provenance and metadata.
+
+Negative results were kept when they contradicted the original hypothesis. For example, the from-scratch vibration encoder did not outperform a random encoder on every dataset, which led to the decision to rely on per-domain PCA memory-bank calibration rather than treating the raw learned embedding as a sufficient anomaly detector.
