@@ -1,11 +1,13 @@
-# Vehicle Health AI — Zero-Shot Multimodal Fault Detection
+# Canary — Zero-Shot Multimodal Fault Detection
 
-A real-time diagnostic system that detects mechanical faults (bearing failures, imbalance,
-misalignment, worn belts) from vibration and audio signals captured by consumer-grade
-sensors — a phone's microphone or accelerometer, or a cheap OBD-adjacent sensor — with
-**zero labeled fault data from the target vehicle**. The system calibrates itself from a
-few seconds of the vehicle's own healthy operation, then flags deviations from that
-personal baseline on-device before ever calling the cloud.
+Named for the same reason miners carried one underground: a canary doesn't need to
+understand what's wrong to be useful — it just needs to react before a human would notice.
+This is a real-time diagnostic system that detects mechanical faults (bearing failures,
+imbalance, misalignment, worn belts) from vibration and audio signals captured by
+consumer-grade sensors — a phone's microphone or accelerometer, or a cheap OBD-adjacent
+sensor — with **zero labeled fault data from the target vehicle**. The system calibrates
+itself from a few seconds of the vehicle's own healthy operation, then flags deviations
+from that personal baseline on-device before ever calling the cloud.
 
 This matters because the standard approach to this problem — supervised fault
 classification — needs thousands of labeled examples of a machine *actively failing*,
