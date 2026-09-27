@@ -28,6 +28,7 @@ around the constraint that the only data a real driver can ever realistically pr
 9. [Setup and running](#9-setup-and-running)
 10. [Known limitations](#10-known-limitations)
 11. [Data licensing & attribution](#11-data-licensing--attribution)
+12. [How AI was used](#12-how-ai-was-used)
 
 ---
 
@@ -212,6 +213,61 @@ the three real recordings (5x above the faulty machine's own silent state, 26x a
 the healthy machine's silent state) — and this is the first time this exact
 calibrate-on-healthy, flag-the-anomaly loop has been run on real, self-collected data
 end to end. Audio's three scores were close together without a clear ranking.
+
+### 2.8 Data documentation: row count, collection window, and observed vs. inferred vs. synthetic
+
+Per-dataset row count, from the full-coverage manifest (Section 2.6):
+
+| Dataset | Rows | Label origin |
+|---|---|---|
+| SUBF | 6,480 | Observed |
+| FEMTO | 3,714 | **Inferred** (run-to-failure heuristic) |
+| Car Diagnostics | 1,386 | Observed |
+| IMS | 984 | **Inferred** (run-to-failure heuristic) |
+| MaFaulDa | 542 | Observed |
+| Paderborn | 480 | Observed |
+| CWRU | 161 | Observed |
+| Engine Journal Bearings | 134 | Observed |
+| AI Mechanic | 39 | Observed |
+| MathWorks | 20 | Observed |
+| Engine Acoustic Emissions | 1 | N/A — rejected, not used |
+| **Total** | **13,941** | 9,243 observed / 4,698 inferred |
+
+**Observed vs. inferred vs. synthetic, defined precisely for this project:**
+
+- **Observed (9,243 rows, 66%):** the healthy/faulty label comes directly from the
+  dataset's own documented structure — a folder name, a filename code, or a label file
+  the original source published. Nothing about the label itself was estimated.
+- **Inferred (4,698 rows, 34%, all from IMS and FEMTO):** both are natural
+  run-to-failure recordings with no documented discrete fault-onset time. This
+  project's readers apply a threshold heuristic — the first 30% of a run's
+  chronologically-sorted files count as "healthy," the last 30% as "degraded," the
+  middle 40% excluded as ambiguous — which is a monotonic proxy, not a verified
+  ground-truth boundary. [`check_run_to_failure_label_sensitivity.py`](scripts/eval/check_run_to_failure_label_sensitivity.py)
+  exists specifically to show how much this threshold choice changes the result.
+- **Synthetic:** no signal data in this project is synthetic — no waveform was
+  generated. The one artificial construction is in
+  [`evaluate_synthetic_multimodal.py`](scripts/eval/evaluate_synthetic_multimodal.py),
+  which pairs a real Car Diagnostics audio file with a real Engine Journal Bearings
+  vibration file by list index only, since no dataset here has genuinely simultaneous
+  audio+vibration from a consumer vehicle. Both halves of every pair are real,
+  unaltered recordings — only the *pairing* between them is artificial, and this is
+  documented as a caveat directly in that script and in Section 7's discussion of its
+  result (0.626 fused vs. 0.729 vibration-only).
+
+**Collection window and cadence:**
+
+- **Public datasets** (Sections 2.2-2.4): each was collected and published by its
+  original research group; original collection dates are documented in their own
+  papers/repositories (linked in Section 11), not independently re-verified here. No
+  new signal was recorded for these — they were downloaded as-is.
+- **Self-collected real-world data** (Section 2.7): recorded on a single day,
+  2026-09-27, between 07:49 and 08:04 IST (Asia/Calcutta) — a ~16-minute window across
+  all four clips (faulty-running, faulty-silent, healthy-running, healthy-silent), all
+  with the same phone and app session. Exact epoch timestamps are in each recording's
+  own `Metadata.csv`, committed under `sample_data/real_world_validation/`. This is a
+  single collection pass, not a repeated-cadence series — a real limitation, named
+  directly in Section 10.
 
 ---
 
@@ -647,3 +703,38 @@ primary vibration encoder. Research/hackathon use fits within that license, but 
 commercial deployment of a model whose vibration encoder was pretrained on Paderborn data
 would need to either retrain the encoder without Paderborn or obtain separate permission
 from Paderborn University.
+
+---
+
+## 12. How AI was used
+
+This project was built with extensive use of Claude (Anthropic's Claude Code), used
+throughout as a hands-on coding and analysis collaborator rather than a one-off content
+generator.
+
+**What Claude Code did:**
+- Wrote every dataset reader, the preprocessing pipeline, the domain-adversarial
+  training loop, the PCA memory bank, and every evaluation script, iterating against
+  real downloaded data and real error messages.
+- Found and fixed concrete, verifiable bugs during development — a wrong sample-rate
+  assumption in SUBF (corrected via FFT harmonic-peak analysis against the documented
+  shaft rotation frequency), a sample-rate mismatch at inference, a class-imbalance
+  evaluation-threshold artifact, and others — each identified from an observed
+  discrepancy, not a hypothetical.
+- Proposed and ran the honesty checks in this README: the random-encoder null baseline
+  (Section 6), the IMS/FEMTO label-sensitivity check (Section 2.8), and reporting a
+  negative result (the from-scratch encoder losing to a random one on MaFaulDa) rather
+  than omitting it.
+- Built and ran the real-world validation once the recordings existed: the reader
+  functions for the phone app's export format, the denoising step, and the analysis
+  comparing all three checks in Section 2.7.
+- Wrote this README and the presentation materials, revised repeatedly against direct
+  correction from the team.
+
+**What the team did directly:** chose the problem and framing (Section 1), decided
+project scope and which experiment to run next at every step, personally collected all
+real-world physical-sensor data (operating the phone, placing it on both washing
+machines, running the recordings), and reviewed and pushed back on results throughout —
+including requesting an independent critical review of this project against this exact
+problem statement's own judging criteria, which directly surfaced several of the fixes
+and disclosures in this README.
