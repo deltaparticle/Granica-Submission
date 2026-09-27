@@ -1,0 +1,47 @@
+[cpu_guard] RAM: 76% used, 3.8GB available (real-world washing machine eval setup)
+Loading encoders...
+Reading recordings...
+  faulty:  vibration running 14.3s, silent 11.0s | audio running 14.2s, silent 10.9s
+  healthy: vibration running 18.9s, silent 8.0s | audio running 18.8s, silent 7.8s
+Denoising faulty machine's 'running' audio against its own paired 'silent' clip (Check 1 only)...
+Extracting embeddings...
+  faulty windows:  vibration running=18 silent=13 | audio running=17 (denoised=17) silent=13
+  healthy windows: vibration running=24 silent=9 | audio running=24 silent=9
+
+======================================================================
+CHECK 1 — Deployed memory banks (Car Diagnostics / Engine Journal Bearings)
+======================================================================
+
+[Vibration]  threshold = 2.12358e-13
+  running (dryer ON, faulty): mean score = 0.0067175  (100% of windows flagged ANOMALY)
+  silent  (dryer OFF, ambient): mean score = 0.0032945  (100% of windows flagged ANOMALY)
+
+[Audio] (running audio denoised)  threshold = 1.15251e-05
+  running (dryer ON, faulty): mean score = 4.58853e-05  (100% of windows flagged ANOMALY)
+  silent  (dryer OFF, ambient): mean score = 1.69824e-05  (92% of windows flagged ANOMALY)
+
+======================================================================
+CHECK 2 — Self-consistency (silent windows as this machine's own calibration, RAW audio — see module docstring)
+======================================================================
+
+[Vibration]  threshold (90th pct of silent's own scores) = 1.02516e-13
+  running vs. silent-calibration: mean score = 0.204925  (100% of windows flagged ANOMALY)
+
+[Audio]  threshold (90th pct of silent's own scores) = 3.5344e-13
+  running vs. silent-calibration: mean score = 0.000870133  (100% of windows flagged ANOMALY)
+
+======================================================================
+CHECK 3 — Train on healthy, test on faulty (real deployed architecture)
+======================================================================
+
+[Vibration]  calibrated on 24 healthy-running windows  threshold (90th pct) = 6.1169e-13
+  FAULTY running (the actual target test): mean score = 0.00582951  (100% of windows flagged ANOMALY)
+  healthy silent (different regime, reference only): mean score = 0.000224868  (100% of windows flagged ANOMALY)
+  faulty silent (different regime, reference only): mean score = 0.00109196  (100% of windows flagged ANOMALY)
+
+[Audio]  calibrated on 24 healthy-running windows  threshold (90th pct) = 1.52785e-13
+  FAULTY running (the actual target test): mean score = 0.000395662  (100% of windows flagged ANOMALY)
+  healthy silent (different regime, reference only): mean score = 0.000464536  (100% of windows flagged ANOMALY)
+  faulty silent (different regime, reference only): mean score = 0.000341102  (100% of windows flagged ANOMALY)
+
+Done.

@@ -1,6 +1,6 @@
 # Evaluator data sample
 
-A real, representative slice of every dataset this project uses — **~426MB**,
+A real, representative slice of every dataset this project uses — **~431MB**,
 against a full `data/raw/` of ~26GB — committed directly so an evaluator can
 see actual physical-sensor data without downloading anything. Every file here
 is exactly what the source dataset shipped (WAV/CSV/.mat/.npz), never
@@ -23,6 +23,7 @@ dataset rather than just taking the first N files alphabetically.
 | `mathworks_data/` | 20 | 43MB | Controlled bearing vibration — the entire held-out dataset |
 | `engine_acoustic_emissions/` | 1 | 4MB | The dataset this project inspected and **rejected** (see main README, Section 1.4) — kept as evidence |
 | `manifest/` | 11 Parquet + `SCHEMA.md` | <1MB | Full-coverage structural manifest — **every** file this project uses across every dataset (13,900+ rows), not just the sample above: which dataset, which pool (training/held-out/rejected), which label, and why |
+| `real_world_validation/` | 28 + log | 5.1MB | Self-collected phone recordings (accelerometer + audio) of a faulty and a healthy washing machine dryer, plus the full collection/preprocessing/results log — see [its own README](real_world_validation/LOG.md) and main README Section 2.7 |
 
 `manifest/` is the one directory here that covers 100% of the data, not a
 sample of it — it's metadata (file path, label, pool) rather than the signals

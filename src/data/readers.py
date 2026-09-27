@@ -452,3 +452,77 @@ def engine_journal_bearings_label_fn(path: Path) -> int:
     if any("faulty" in p for p in parts):
         return 1
     raise ValueError(f"Could not determine healthy/faulty label for {path}")
+
+
+# --------------------------------------------------------------------------
+# Washing machine dryer (self-collected, real-world validation — README
+# Section 2.7). Recorded with the "Sensor Logger" Android app (Logger Labs
+# Ltd) on a real faulty washing-machine dryer in an IIT Guwahati hostel
+# corridor: one ~14.3s clip with the dryer running, one ~11.0s clip of the
+# same spot with the dryer off (silence/ambient reference, NOT a healthy-
+# machine baseline — see the caveat already documented in the README).
+#
+# Two files per recording matter here:
+#   TotalAcceleration.csv — raw hardware accelerometer (gravity included),
+#     x/y/z in m/s^2, timestamped in seconds_elapsed. Verified near-perfectly
+#     regular at ~399.4 Hz (std of consecutive gaps <0.02ms) on both clips —
+#     resampled onto a uniform grid at that rate rather than assumed evenly
+#     spaced, since real sensor timestamps (unlike a lab DAQ) are not
+#     guaranteed to be. Chosen over Accelerometer.csv ("Linear Acceleration",
+#     gravity removed) because it's delivered at roughly 2x the rate on this
+#     phone (~399Hz vs ~196Hz) — more sample-rate headroom for fault content
+#     matters more here than removing the gravity DC offset, which the
+#     downstream mel-spectrogram (fmin=20Hz) already suppresses.
+#   Microphone.mp4 — AAC-in-MP4 (16kHz, stereo), the actual audio; the
+#     accompanying Microphone.csv is a coarse ~100ms dBFS loudness meter log,
+#     not raw audio, and is not used here. Decoded via PyAV (`av`), since
+#     `soundfile` cannot read AAC/MP4 containers and no system ffmpeg is
+#     required for PyAV to work.
+#
+# No single "one channel per file" convention applies as cleanly as it does
+# for a bolted lab accelerometer — the phone's placement orientation on the
+# dryer wasn't fixed the way a rig-mounted sensor's is — so the vibration
+# reader returns the axis magnitude sqrt(x^2+y^2+z^2), which is orientation-
+# invariant, rather than picking one arbitrary axis.
+WASHING_MACHINE_ACCEL_SAMPLE_RATE = 400  # rounded from the measured ~399.4Hz
+
+
+def washing_machine_dryer_vibration_reader(path: Path) -> tuple[np.ndarray, int]:
+    """`path` is a TotalAcceleration.csv file. Returns (magnitude signal,
+    sample rate), resampled onto a uniform time grid via linear interpolation."""
+    import pandas as pd
+    df = pd.read_csv(path)
+    t = df["seconds_elapsed"].to_numpy(dtype=np.float64)
+    mag = np.sqrt(df["x"] ** 2 + df["y"] ** 2 + df["z"] ** 2).to_numpy(dtype=np.float64)
+    sr = WASHING_MACHINE_ACCEL_SAMPLE_RATE
+    n_uniform = int(round((t[-1] - t[0]) * sr)) + 1
+    t_uniform = t[0] + np.arange(n_uniform) / sr
+    mag_uniform = np.interp(t_uniform, t, mag)
+    return mag_uniform.astype(np.float32), sr
+
+
+def washing_machine_dryer_audio_reader(path: Path) -> tuple[np.ndarray, int]:
+    """`path` is a Microphone.mp4 file. Decodes via PyAV (no system ffmpeg
+    needed), downmixes stereo to mono by averaging channels."""
+    import av
+    container = av.open(str(path))
+    stream = container.streams.audio[0]
+    sr = stream.rate
+    frames = [frame.to_ndarray() for frame in container.decode(stream)]
+    container.close()
+    arr = np.concatenate(frames, axis=1) if frames[0].ndim > 1 else np.concatenate(frames)
+    if arr.ndim > 1:
+        arr = arr.mean(axis=0)
+    return arr.astype(np.float32), sr
+
+
+def washing_machine_dryer_label_fn(path: Path) -> int:
+    """0 = silent/idle recording, 1 = dryer running (known faulty). Not a
+    healthy/faulty pair from the same failure mode — see module docstring
+    and README Section 2.7."""
+    parts = [p.lower() for p in path.parts]
+    if "silent" in parts:
+        return 0
+    if "running" in parts:
+        return 1
+    raise ValueError(f"Could not determine silent/running label for {path}")

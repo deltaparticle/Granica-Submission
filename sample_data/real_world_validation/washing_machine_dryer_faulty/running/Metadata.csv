@@ -1,0 +1,2 @@
+version,device name,recording epoch time,recording time,recording timezone,platform,appVersion,device id,sensors,sampleRateMs,standardisation,platform version
+3,A015,1790495379239,2026-09-27_07-49-39,Asia/Calcutta,android,1.66,8d4d21e3-20ac-4211-9950-5f1df890369f,Accelerometer|Microphone|Annotation|TotalAcceleration|AccelerometerUncalibrated,0|100||0|0,true,36

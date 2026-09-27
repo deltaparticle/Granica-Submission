@@ -13,3 +13,5 @@ tqdm
 kaggle
 requests
 psutil
+av
+noisereduce

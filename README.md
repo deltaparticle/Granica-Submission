@@ -141,23 +141,49 @@ rather than silently dropped:
 ### 2.6 Sample data in this repo
 
 The full raw data (~26GB) is not committed (Section 9), but a real, representative
-**~426MB sample of every dataset above** — actual WAV/CSV/.mat/.npz files, never
+**~431MB sample of every dataset above, plus the real-world validation recordings** —
+actual WAV/CSV/.mat/.npz files, never
 synthetic — is committed directly under [`sample_data/`](sample_data/), along with a
 **full-coverage Parquet manifest** (13,900+ rows, every file this project uses, across
 every dataset, with its label and role) under [`sample_data/manifest/`](sample_data/manifest/).
 See [`sample_data/README.md`](sample_data/README.md) for exactly what's in each folder and
 how it was selected.
 
-### 2.7 Planned: validation on manually-collected real-world data
+### 2.7 Real-world validation: a self-collected washing machine dryer
 
-Everything in Section 7 is evaluated on public research datasets. Because the deployed
-detector only ever needs *normal*-condition data to calibrate — never fault labels
-(Section 3) — a small set of real recordings manually collected from one specific
-machine (a lab motor/pump, or a two-wheeler) is enough to validate the pipeline
+Section 7's results are all on public research datasets. Because the deployed detector
+only ever needs *normal*-condition data to calibrate — never fault labels (Section 3) —
+a small set of manually-collected recordings is enough to validate the pipeline
 end-to-end on genuinely self-collected data, even though it would never be enough to
-*train* anything (which is exactly why manual collection was not attempted for
-pretraining — see Section 2.1). This is planned and not yet done; this section will be
-updated with those results once collected.
+*train* anything (why manual collection wasn't attempted for pretraining — Section 2.1).
+
+Two washing machine dryers were recorded with a phone (accelerometer + microphone,
+via the free "Sensor Logger" Android app) — one with a known, constant dryer fault,
+and a second, healthy machine to provide a real normal-operating-condition calibration
+source. Full collection method, preprocessing, and every check run are in
+[`sample_data/real_world_validation/LOG.md`](sample_data/real_world_validation/LOG.md);
+the recordings and the full run log are committed alongside it.
+
+**Train-on-healthy, test-on-faulty** (the project's actual deployed architecture, run
+end-to-end on self-collected data for the first time): the PCA memory bank was
+calibrated on the healthy machine's own running windows, then the faulty machine's
+running windows were scored against it.
+
+| Modality | Faulty running (the target test) | Healthy silent (reference) | Faulty silent (reference) |
+|---|---|---|---|
+| **Vibration** | **mean 0.00583 — 100% flagged anomaly** | mean 0.000225 | mean 0.00109 |
+| Audio | mean 0.000396 — 100% flagged anomaly | mean 0.000465 | mean 0.000341 |
+
+Vibration ranks the faulty machine's running state as clearly the highest-scoring of
+the three real recordings (5x above the faulty machine's own silent state, 26x above
+the healthy machine's silent state) — the first time this exact calibrate-on-healthy,
+flag-the-anomaly loop has been run on real, self-collected data end to end, and it
+correctly identified the known-faulty machine. Audio's three scores were close
+together without a clear ranking. The faulty machine's audio was also scored against
+the pre-built deployment memory banks (Section 7's Car Diagnostics/Engine Journal
+Bearings calibration) after spectral-gate denoising against its own silent recording
+as a noise profile: running scored 4.59e-5 vs. silent's 1.70e-5 (100% vs. 92% flagged),
+a real separation where raw audio had shown almost none.
 
 ---
 
@@ -379,9 +405,10 @@ constraint this project is built around.
 ```
 .
 ├── requirements.txt
-├── sample_data/                       # Committed real-data sample (~426MB) — see Section 2.6
+├── sample_data/                       # Committed real-data sample (~431MB) — see Section 2.6
 │   ├── README.md
 │   ├── manifest/                      # Full-coverage Parquet manifest + SCHEMA.md
+│   ├── real_world_validation/         # Self-collected washing machine recordings + LOG.md — see Section 2.7
 │   └── <dataset>/...                  # Representative real files, one folder per dataset
 ├── src/                              # Core library code (no side effects on import)
 │   ├── cpu_guard.py                  # CPU/RAM safety guard used by every long-running script
@@ -413,6 +440,7 @@ constraint this project is built around.
 │   │   ├── evaluate_stage3_ablation.py         # Ablation study on fusion components
 │   │   ├── evaluate_synthetic_multimodal.py    # Arbitrarily-paired audio+vibration fusion check
 │   │   ├── evaluate_new_dataset.py             # ESC-50 environmental-sound sanity comparison
+│   │   ├── evaluate_real_world_washing_machine.py     # Real-world validation (Section 2.7)
 │   │   ├── check_random_encoder_baseline.py           # Null baseline: untrained vs. trained encoder
 │   │   ├── check_encoder_beats_random_indomain.py     # Same check, restricted to in-domain data
 │   │   ├── check_run_to_failure_label_sensitivity.py  # Label-threshold sensitivity for IMS/FEMTO
