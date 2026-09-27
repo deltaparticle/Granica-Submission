@@ -499,8 +499,8 @@ numbers in Section 7 actually depend on.
 |---|---|---|---|
 | **Engine Journal Bearings** (real automobile engine) | Vibration | PCA reconstruction-error | **0.953** (up to 1.000 with max-pooling/PatchCore-style aggregation) |
 | **Car Diagnostics** (1,386 real car recordings) | Audio, vibration-trained encoder | PCA reconstruction-error | **0.933** |
-| **AI Mechanic** | Audio | Fine-tuned VGGish backbone + One-Class SVM | **0.824** |
-| **MaFaulDa** | Vibration | PCA reconstruction-error (calibrated on 5 real normal files) | 0.675 |
+| **AI Mechanic** | Audio | Fine-tuned VGGish backbone + One-Class SVM | **0.811** |
+| **MaFaulDa** | Vibration | PCA reconstruction-error (calibrated on 5 real normal files) | 0.863 |
 | **MathWorks Rolling-Element Bearing** | Vibration | PCA reconstruction-error (calibrated on 1 normal file, tested on 2) | 0.891 |
 
 ### Context from published literature
