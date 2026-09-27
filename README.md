@@ -1,4 +1,4 @@
-# Canary — Zero-Shot Multimodal Fault Detection
+# Canary — AI-Assisted Fault Detection for Machines
 
 The name comes from the old mining canary: it does not need to identify the problem,
 only to react early enough for someone to investigate it.
