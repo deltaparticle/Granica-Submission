@@ -15,9 +15,13 @@ interface Dataset {
 interface ComparisonData {
   dataset_name: string;
   fault_detail: string;
+  mode: string;
+  file_analyzed: string;
+  spectrogram_b64: string;
   comparison_b64: string;
   waveform_normal_b64: string;
   waveform_faulty_b64: string;
+  waveform_b64: string;
   anomaly_score: number;
   threshold: number;
   score_ratio: number;
@@ -127,6 +131,7 @@ function App() {
   const [inferenceLogs, setInferenceLogs] = useState<string[]>([]);
   const [apiIsComplete, setApiIsComplete] = useState(false);
   const [showResults, setShowResults] = useState(false);
+  const [hoveredCard, setHoveredCard] = useState<string | null>(null);
 
   useEffect(() => {
     // Inject a clean Google Font to override standard sans-serif
@@ -149,7 +154,7 @@ function App() {
       });
   }, []);
 
-  const handleCardClick = (datasetKey: string, datasetName: string, modality: string) => {
+  const handleCardClick = (datasetKey: string, datasetName: string, modality: string, mode: 'normal' | 'faulty') => {
     setSelectedDataset(datasetKey);
     setComparison(null);
     setApiFailed(false);
@@ -160,11 +165,11 @@ function App() {
     
     // Initial connection logs
     setInferenceLogs([
-      `[SYSTEM] Invoking Python subprocess: python scripts/inference/predict.py --modality ${modality} --file ${datasetName}...`,
+      `[SYSTEM] Invoking Python subprocess: python scripts/inference/predict.py --modality ${modality} --file ${datasetName} --mode ${mode}...`,
       `[SYSTEM] Connecting to backend engine...`,
     ]);
 
-    fetch(`${API_BASE}/api/compare/${datasetKey}`)
+    fetch(`${API_BASE}/api/analyze/${datasetKey}?mode=${mode}`)
       .then(res => {
         if (!res.ok) throw new Error("Failed to fetch comparison data");
         return res.json();
@@ -223,7 +228,12 @@ function App() {
         <div className="main-content">
           <div className="sidebar">
             {datasets.map(ds => (
-              <div key={ds.key} className="card" onClick={() => handleCardClick(ds.key, ds.name, ds.modality)}>
+              <div 
+                key={ds.key} 
+                className="card" 
+                onMouseEnter={() => setHoveredCard(ds.key)}
+                onMouseLeave={() => setHoveredCard(null)}
+              >
                 <div className="card-header">
                   <h3 className="card-title">{ds.name}</h3>
                   <span className="badge-modality">{ds.modality}</span>
@@ -237,6 +247,22 @@ function App() {
                     ⏱️ {ds.sample_rate}
                   </span>
                 </div>
+                {hoveredCard === ds.key && (
+                  <div className="card-hover-actions">
+                    <button 
+                      className="hover-btn hover-btn-normal"
+                      onClick={(e) => { e.stopPropagation(); handleCardClick(ds.key, ds.name, ds.modality, 'normal'); }}
+                    >
+                      Analyze Normal
+                    </button>
+                    <button 
+                      className="hover-btn hover-btn-faulty"
+                      onClick={(e) => { e.stopPropagation(); handleCardClick(ds.key, ds.name, ds.modality, 'faulty'); }}
+                    >
+                      Analyze Anomaly
+                    </button>
+                  </div>
+                )}
               </div>
             ))}
           </div>
@@ -327,29 +353,58 @@ function App() {
                 </div>
 
                 {/* Heatmap comparison panel */}
-                <div style={{ marginTop: '2rem' }}>
-                  <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
-                    Spectrogram Difference Matrix
-                  </h3>
-                  <img 
-                    src={`data:image/png;base64,${comparison.comparison_b64}`} 
-                    alt="Comparison Heatmap" 
-                    className="comparison-image"
-                  />
-                </div>
-                
-                {/* Waveforms side-by-side */}
-                <div className="waveforms-grid">
-                  <div className="waveform-card normal">
-                    <h4 style={{ fontWeight: 600, color: '#334155' }}>Baseline Signal Profile</h4>
-                    <img src={`data:image/png;base64,${comparison.waveform_normal_b64}`} alt="Normal Waveform" />
-                  </div>
-                  
-                  <div className="waveform-card faulty">
-                    <h4 style={{ fontWeight: 600, color: 'var(--danger-color)' }}>Anomalous Signal Profile</h4>
-                    <img src={`data:image/png;base64,${comparison.waveform_faulty_b64}`} alt="Faulty Waveform" />
-                  </div>
-                </div>
+                {comparison.verdict === 'ANOMALY_DETECTED' ? (
+                  <>
+                    <div style={{ marginTop: '2rem' }}>
+                      <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                        Spectrogram Difference Matrix
+                      </h3>
+                      <img 
+                        src={`data:image/png;base64,${comparison.comparison_b64}`} 
+                        alt="Comparison Heatmap" 
+                        className="comparison-image"
+                      />
+                    </div>
+                    
+                    {/* Waveforms side-by-side */}
+                    <div className="waveforms-grid">
+                      <div className="waveform-card normal">
+                        <h4 style={{ fontWeight: 600, color: '#334155' }}>Baseline Signal Profile</h4>
+                        <img src={`data:image/png;base64,${comparison.waveform_normal_b64}`} alt="Normal Waveform" />
+                      </div>
+                      
+                      <div className="waveform-card faulty">
+                        <h4 style={{ fontWeight: 600, color: 'var(--danger-color)' }}>Anomalous Signal Profile</h4>
+                        <img src={`data:image/png;base64,${comparison.waveform_faulty_b64}`} alt="Faulty Waveform" />
+                      </div>
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    <div style={{ marginTop: '2rem' }}>
+                      <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                        Spectrogram Profile
+                      </h3>
+                      <img 
+                        src={`data:image/png;base64,${comparison.spectrogram_b64}`} 
+                        alt="Normal Spectrogram" 
+                        className="comparison-image"
+                        style={{ maxWidth: '600px', margin: '0 auto', display: 'block' }}
+                      />
+                    </div>
+                    
+                    <div style={{ marginTop: '2rem' }}>
+                      <h3 style={{ marginBottom: '1rem', fontSize: '1.25rem', color: 'var(--text-primary)', fontWeight: 700 }}>
+                        Signal Waveform
+                      </h3>
+                      <img 
+                        src={`data:image/png;base64,${comparison.waveform_b64}`} 
+                        alt="Normal Waveform" 
+                        className="comparison-image"
+                      />
+                    </div>
+                  </>
+                )}
               </div>
             </div>
           ) : (
