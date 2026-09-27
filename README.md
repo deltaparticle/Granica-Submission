@@ -324,41 +324,35 @@ spent would suggest for strictly serial execution.
 
 ```mermaid
 flowchart TD
-    subgraph EDGE["edge device (on-phone)"]
-        direction TB
-        FILE["new sensor file<br/>.wav or .csv"]
-        READER["modality-specific reader<br/>loads raw signal"]
-        PREPROC["preprocess signal<br/>resample, window, log-mel"]
-        ENC2["frozen encoder<br/>128-d embedding"]
-        SCORE["memory bank score<br/>PCA reconstruction error"]
-        DECIDE{"score ≤ threshold?"}
-        STOP["stop on edge<br/>no cloud call, zero cost"]
-        FILE --> READER --> PREPROC --> ENC2 --> SCORE --> DECIDE
-        DECIDE -->|normal| STOP
-    end
+    FILE["sensor file"]
+    READER["reader"]
+    PREP["preprocessing"]
+    ENC2["frozen encoder"]
+    SCORE["memory bank score"]
+    DECIDE{"score under threshold?"}
+    STOP["stop on edge"]
 
-    subgraph ARTIFACTS["model artifacts"]
-        direction TB
-        CKPT2[("encoder checkpoint<br/>.pt file")]
-        BANK2[("memory bank<br/>.joblib file")]
-    end
+    CKPT2["encoder checkpoint"]
+    BANK2["memory bank"]
 
-    subgraph CLOUD["cloud (TypeSafe Jev)"]
-        direction TB
-        CTX["package context<br/>score + mechanic notes"]
-        JEV["Jev decision model<br/>structured, typed response"]
-        OUT["structured output<br/>fault, severity, action"]
+    subgraph CLOUD["cloud: TypeSafe Jev"]
+        direction LR
+        CTX["package context"]
+        JEV["Jev decision model"]
+        OUT["structured output"]
         CTX --> JEV --> OUT
     end
 
+    FILE --> READER --> PREP --> ENC2 --> SCORE --> DECIDE
+    DECIDE -->|normal| STOP
+    DECIDE -->|anomaly| CTX
     CKPT2 -.->|loaded by| ENC2
     BANK2 -.->|loaded by| SCORE
-    DECIDE -->|anomaly| CTX
 
     classDef data fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
     classDef model fill:#EEEDFE,stroke:#534AB7,color:#26215C
     classDef calib fill:#E1F5EE,stroke:#0F6E56,color:#04342C
-    class FILE,READER,PREPROC,STOP,CKPT2,BANK2 data
+    class FILE,READER,PREP,STOP,CKPT2,BANK2 data
     class ENC2,CTX,JEV,OUT model
     class SCORE,DECIDE calib
 ```
