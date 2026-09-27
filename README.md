@@ -263,39 +263,26 @@ risk to manage, at the cost of not learning an explicit fault-type classifier at
 
 ```mermaid
 flowchart TD
-    subgraph DATA["training data sources"]
-        direction LR
-        CWRU[CWRU]
-        IMS[IMS]
-        FEMTO[FEMTO]
-        PB[Paderborn]
-        SUBF[SUBF]
-        MFD[MaFaulDa]
-    end
+    DATA["training datasets\nCWRU, IMS, FEMTO, Paderborn, SUBF, MaFaulDa"]
 
-    subgraph PREP["preprocessing"]
-        direction LR
-        RESAMPLE["resample + window<br/>1.5s window, 0.75s hop"]
-        MEL["log-mel spectrogram<br/>128 mel bins"]
-        RESAMPLE --> MEL
-    end
+    PREP["preprocessing\nresample, window, log-mel spectrogram"]
 
-    ENC["shared spectrogram encoder<br/>4 conv layers, 128-d embedding"]
+    ENC["shared spectrogram encoder\n4 conv layers, 128-d embedding"]
 
     subgraph ADV["adversarial training"]
         direction LR
-        DOM["domain classifier<br/>gradient reversal layer"]
-        FAULT["fault classifier<br/>cross-entropy loss"]
+        DOM["domain classifier\ngradient reversal layer"]
+        FAULT["fault classifier\ncross-entropy loss"]
     end
 
-    CKPT[("frozen encoder checkpoint<br/>saved once, reused everywhere")]
+    CKPT[("frozen encoder checkpoint\nsaved once, reused everywhere")]
 
     subgraph CALIB["per-deployment calibration"]
         direction TB
-        NORMAL["target's normal data<br/>healthy samples only"]
-        EMBED["embed via encoder<br/>reuses frozen checkpoint"]
-        FITPCA["fit PCA + set threshold<br/>max 32 components"]
-        BANK[("memory bank saved<br/>.joblib file")]
+        NORMAL["target's normal data\nhealthy samples only"]
+        EMBED["embed via encoder\nreuses frozen checkpoint"]
+        FITPCA["fit PCA + set threshold\nmax 32 components"]
+        BANK[("memory bank saved\n.joblib file")]
         NORMAL --> EMBED --> FITPCA --> BANK
     end
 
@@ -310,7 +297,7 @@ flowchart TD
     classDef data fill:#F1EFE8,stroke:#5F5E5A,color:#2C2C2A
     classDef model fill:#EEEDFE,stroke:#534AB7,color:#26215C
     classDef calib fill:#E1F5EE,stroke:#0F6E56,color:#04342C
-    class CWRU,IMS,FEMTO,PB,SUBF,MFD,RESAMPLE,MEL,CKPT data
+    class DATA,PREP,CKPT data
     class ENC,DOM,FAULT model
     class NORMAL,EMBED,FITPCA,BANK calib
 ```
