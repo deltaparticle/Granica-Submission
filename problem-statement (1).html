@@ -1,0 +1,432 @@
+<!DOCTYPE html>
+<html xmlns="http://www.w3.org/1999/xhtml">
+<head>
+  <meta charset="utf-8" />
+  <meta name="generator" content="pandoc 3.10.1" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=yes" />
+  <title>Problem Statement — Bring the Physical World to AI</title>
+  <style>
+
+span.smallcaps{font-variant: small-caps;}
+div.columns{display: flex; gap: 1.5em;}
+div.column{flex: auto;}
+@media screen {
+div.columns{gap: min(4vw, 1.5em);}
+div.column{overflow-x: auto;}
+}
+div.hanging-indent{margin-left: 1.5em; text-indent: -1.5em;}
+
+ul.task-list[class]{list-style: none;}
+ul.task-list li input[type="checkbox"] {
+font-size: inherit;
+width: 0.8em;
+margin: 0 0.8em 0.2em -1.6em;
+vertical-align: middle;
+}
+.display.math{display: block; text-align: center; margin: 0.5rem auto;}
+</style>
+  <style type="text/css">:root {
+--ink: #1a1a1a;
+--muted: #5c6672;
+--line: #e3e7ec;
+--accent: #1f6feb;
+--bg-soft: #f7f9fb;
+--ok-bg: #f0f9f2;
+--ok-line: #cfe8d6;
+--no-bg: #fdf3f2;
+--no-line: #f2d0cc;
+}
+html { -webkit-text-size-adjust: 100%; }
+body {
+font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Inter, Helvetica, Arial, sans-serif;
+color: var(--ink);
+line-height: 1.6;
+max-width: 880px;
+margin: 0 auto;
+padding: 48px 28px 96px;
+background: #fff;
+}
+h1 {
+font-size: 2.1rem;
+line-height: 1.2;
+margin: 0 0 .2em;
+letter-spacing: -.02em;
+}
+h1 + h3 {
+margin-top: 0;
+color: var(--muted);
+font-weight: 500;
+font-size: 1.02rem;
+letter-spacing: .01em;
+border: 0;
+padding: 0;
+}
+h2 {
+font-size: 1.45rem;
+margin: 2.4em 0 .7em;
+padding-top: .6em;
+border-top: 2px solid var(--line);
+letter-spacing: -.01em;
+}
+h3 {
+font-size: 1.12rem;
+margin: 1.9em 0 .5em;
+color: #16324f;
+}
+p, li { font-size: 1rem; }
+li { margin: .3em 0; }
+a { color: var(--accent); text-decoration: none; }
+a:hover { text-decoration: underline; }
+hr { border: 0; border-top: 1px solid var(--line); margin: 2.4em 0; }
+table {
+border-collapse: collapse;
+width: 100%;
+margin: 1.2em 0 1.6em;
+font-size: .94rem;
+}
+th, td {
+border: 1px solid var(--line);
+padding: 9px 12px;
+text-align: left;
+vertical-align: top;
+}
+th {
+background: var(--bg-soft);
+font-weight: 600;
+}
+tbody tr:nth-child(even) { background: #fcfdfe; }
+code {
+font-family: ui-monospace, SFMono-Regular, "SF Mono", Menlo, monospace;
+font-size: .88em;
+background: var(--bg-soft);
+padding: .12em .4em;
+border-radius: 4px;
+border: 1px solid var(--line);
+}
+pre {
+background: var(--bg-soft);
+border: 1px solid var(--line);
+border-radius: 8px;
+padding: 16px 18px;
+overflow-x: auto;
+line-height: 1.5;
+}
+pre code { background: none; border: 0; padding: 0; font-size: .86rem; }
+blockquote {
+margin: 1.4em 0;
+padding: .8em 1.2em;
+border-left: 4px solid var(--accent);
+background: var(--bg-soft);
+color: #2c3b4a;
+}
+blockquote p { margin: .4em 0; }
+strong { font-weight: 650; }
+
+ul.task-list { list-style: none; padding-left: .2em; }
+ul.task-list li { margin: .45em 0; }
+ul.task-list input[type="checkbox"] { margin-right: .6em; transform: scale(1.15); }
+
+td:first-child:empty { background: var(--bg-soft); }
+@media print {
+body { max-width: none; padding: 0; font-size: 11pt; }
+h2 { page-break-after: avoid; }
+table, pre, blockquote { page-break-inside: avoid; }
+a { color: var(--ink); text-decoration: none; }
+}
+@media (max-width: 620px) {
+body { padding: 28px 16px 64px; }
+h1 { font-size: 1.7rem; }
+table { font-size: .86rem; }
+th, td { padding: 7px 9px; }
+}
+</style>
+</head>
+<body>
+<header id="title-block-header">
+<h1 class="title">Problem Statement — Bring the Physical World to
+AI</h1>
+</header>
+<h1 id="bring-the-physical-world-to-ai">Bring the Physical World to
+AI</h1>
+<p><strong>Granica × IIT Guwahati Hackathon · 48 hours · teams of
+2–3</strong></p>
+<hr />
+<h2 id="physical-ai-wants-its-data">Physical AI wants its data</h2>
+<h3 id="captured-data-made-modern-ai-possible">1. Captured data made
+modern AI possible</h3>
+<p>The remarkable progress in AI began with a gift: much of the raw
+material was already there. Books, web pages, code, images, and
+conversations had been captured and stored. Models learned from them.
+The leap from the first GPT systems to the models we use now was driven
+not only by new architectures, but by more data, richer data, and better
+ways of using it.</p>
+<h3 id="self-driving-shows-what-happens-when-the-physical-world-is-captured">2.
+Self-driving shows what happens when the physical world is captured</h3>
+<p>The goal of self-driving was not to build a large road dataset. It
+was to move people safely without a human at the wheel. Teams worked
+backward from that problem: what must a car notice, how should roads and
+edge cases be recorded, and how can those observations support a
+decision in the next second? The data, labels, sensors, and models all
+existed to make the car more capable in the world. After years of work,
+self-driving cars are doing remarkable things. Self-driving remains one
+of the first physical domains to be made learnable.</p>
+<p>At the beginning, this work would have looked much narrower than
+“build a self-driving car”: keep the car in its lane, detect a
+pedestrian, anticipate another road user’s move, or handle one route in
+one kind of weather. Each question was tied to a failure the system
+needed to avoid. That is how difficult physical problems become
+buildable.</p>
+<h3 id="most-physical-systems-are-still-waiting">3. Most physical
+systems are still waiting</h3>
+<p>We do not have good records of how a campus moves, how a hospital
+operates, where a city wastes energy, or what a factory sounds like
+before a failure. Models cannot help with a problem if nobody has
+captured the right evidence from the workflow around it. The next
+generation of models that can understand and help in the physical world
+will need the same foundation today’s models had: data gathered for a
+purpose.</p>
+<h3 id="your-opportunity-at-iit-guwahati">4. Your opportunity at IIT
+Guwahati</h3>
+<p>In 48 hours, you will choose a real problem, name the person or team
+who has it, and build the smallest useful intervention you can. You
+might collect physical data, turn it into a structured record, and use
+AI to make a decision, recommendation, alert, or workflow better. You
+will not be asked to solve the whole world. You will learn how to build
+one small, credible piece of the future—and how to make a project that
+someone else can inspect, trust, and use.</p>
+<p>IIT Guwahati is full of systems to work with: hostels, messes,
+classrooms, roads, lakes, workshops, the hospital, and people moving
+through all of them. You do not need a large budget or elaborate
+hardware. You need a good question and the patience to collect
+evidence.</p>
+<p>Start with the problem, then work backward:</p>
+<pre class="text"><code>real problem → physical workflow → useful observations → AI-assisted decision → action</code></pre>
+<p>The point is not to collect data for its own sake or wrap a chatbot
+around a made-up example. It is to understand a real workflow, produce
+the evidence it is missing, and show what someone could do differently
+because you built the right support around it.</p>
+<p><strong>Do not start with a sensor. Start with someone who needs
+something to work better.</strong></p>
+<h2 id="your-challenge">Your challenge</h2>
+<ol type="1">
+<li><strong>Choose a real problem and a user.</strong> What decision is
+difficult today? What action would improve if the right evidence were
+available?</li>
+<li><strong>Understand the physical workflow.</strong> What actually
+happens, where does it happen, and what can you observe without
+disrupting it?</li>
+<li><strong>Collect the evidence.</strong> Manual counts, photographs,
+phone sensors, a webcam, public APIs, or an approved campus system are
+all valid. Cheap is fine. Real is required.</li>
+<li><strong>Make it usable.</strong> Collect more than once, record how
+and when you collected it, and put the results in an open format.
+Parquet is preferred.</li>
+<li><strong>Use AI where it earns its place.</strong> It might filter
+images, classify sounds, extract information, find patterns, predict
+what happens next, or help a person decide what to do.</li>
+</ol>
+<p>You decide how far to take the solution:</p>
+<ul>
+<li><strong>Understand</strong> — fully sufficient to win. Give the user
+a clearer picture of what is happening and why. A new understanding that
+changes how someone works is a complete project.</li>
+<li><strong>Predict</strong> — a bonus. What is likely to happen
+next?</li>
+<li><strong>Recommend</strong> — a bonus. What should someone do
+differently?</li>
+<li><strong>Actuate</strong> — optional, never expected. Make something
+respond to the result if it is safe and sensible.</li>
+</ul>
+<h2 id="examples-of-problem-led-projects">Examples of problem-led
+projects</h2>
+<p>Each example starts with a problem, a user, and a possible action.
+The physical data and AI are means to that end. Do not copy them. Let
+them show you the shape of a good project: small enough to build in 48
+hours, useful enough that someone would want to use it afterward.</p>
+<ul>
+<li><strong>Motion — help estates decide what to fix first.</strong>
+People using wheelchairs or walking aids may know which routes are
+difficult, but the estates office may not have a current, usable record.
+Walk campus routes with a phone, mark kerbs without ramps, broken
+surfaces, missing handrails, and blocked paths, then turn those
+observations into a route map and a ranked repair list. <strong>Who
+could use it:</strong> the estates office. <strong>What
+changes:</strong> it can decide where an access improvement would help
+most.</li>
+<li><strong>Sight — help facilities find avoidable energy
+waste.</strong> The facilities team cannot check every room by hand
+after the academic complex empties. Photograph the buildings late on
+both nights, count rooms that are still lit or cooled, and compare that
+with the timetable. Turn the result into a nightly list of rooms to
+check, with an estimate in kWh and rupees. <strong>Who could use
+it:</strong> the School of Energy Science and Engineering and the person
+who pays the bill. <strong>What changes:</strong> staff get a targeted
+action instead of a general warning.</li>
+<li><strong>Sound — help preserve languages that are rarely
+recorded.</strong> The Centre for Linguistic Science and Technology
+needs labelled speech, but collecting and sorting it is slow. With clear
+consent, record short passages from languages represented on
+campus—perhaps Assamese, Bodo, Maithili, Nepali, and others you meet.
+Let a language-identification model make a first pass, then check the
+labels with speakers. <strong>Who could use it:</strong> the language
+centre. <strong>What changes:</strong> they receive a checked research
+collection they can build on.</li>
+</ul>
+<p>What these projects have in common is not a fancy model. They begin
+with somebody who needs to do something, then use a photograph or a
+recording to make that action more informed. The result is a decision, a
+maintenance list, an energy bill, or a research collection—not just a
+dashboard.</p>
+<p>Other problems worth tackling:</p>
+<ul>
+<li>helping campus security prioritise dark stretches on night routes,
+using where people actually walk;</li>
+<li>giving maintenance teams a severity-ranked list from systematic
+facade and road photographs;</li>
+<li>helping mess managers reduce contamination in waste bins or plate
+waste across hostels;</li>
+<li>making the institute’s tree-canopy and carbon reporting easier to
+update;</li>
+<li>giving people a rough, local haze record when the nearest
+air-quality readings are far away;</li>
+<li>helping a workshop spot a change in machine sound before a
+failure.</li>
+</ul>
+<h2 id="what-counts-and-what-does-not">What counts, and what does
+not</h2>
+<p><strong>Allowed:</strong> manual counts and tally sheets · phone
+sensors (camera, microphone, GPS, accelerometer) · photographs processed
+by a vision model · public APIs · your own AI accounts and API keys,
+from any provider · local models · AI coding assistants · planning and
+environment setup before the event · clearly labelled synthetic data
+used only to extend real observations.</p>
+<p><strong>Not allowed:</strong> synthetic-only projects · covert
+recording of identifiable people · entering restricted areas or touching
+campus infrastructure · unauthorised access to campus systems · bringing
+a mostly finished project from before the event.</p>
+<p><strong>Five rules:</strong></p>
+<ol type="1">
+<li><strong>Teams of 2–3.</strong> Planning before kickoff is allowed.
+Substantial implementation and qualifying data collection happen during
+the 48 hours.</li>
+<li><strong>Real data is required.</strong> Synthetic data may extend
+your observations; it cannot replace them. Show the split.</li>
+<li><strong>Respect privacy and safety.</strong> Do not covertly record
+identifiable people. Aggregate, anonymise, or get consent. Observe only
+where organisers approve.</li>
+<li><strong>Bring your own AI.</strong> Use your own models, accounts,
+and keys. No compute or credits are provided. Assistants are welcome,
+but you must be able to explain what you submit.</li>
+<li><strong>Make it inspectable.</strong> Provide a data sample, a
+schema, and a secure way to access the code. A public repository is not
+required.</li>
+</ol>
+<h2 id="what-you-submit">What you submit</h2>
+<table>
+<colgroup>
+<col style="width: 33%" />
+<col style="width: 33%" />
+<col style="width: 33%" />
+</colgroup>
+<thead>
+<tr>
+<th>#</th>
+<th>Artefact</th>
+<th>Format</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>1</td>
+<td><strong>3-slide deck</strong></td>
+<td>PDF. Slide 1: the problem, the user, and your question. Slide 2: the
+workflow, your collection method, and the solution you built. Slide 3:
+the result, what changes for the user, and the demo link. Hard limit of
+3 slides.</td>
+</tr>
+<tr>
+<td>2</td>
+<td><strong>3-minute demo</strong></td>
+<td>Live URL or recorded video. Recorded is safer.</td>
+</tr>
+<tr>
+<td>3</td>
+<td><strong>Code + data access path</strong></td>
+<td>Private repository invite, archive, or a scheduled walkthrough.
+Include a data sample and a schema description.</td>
+</tr>
+</tbody>
+</table>
+<p>Also document the row count, collection window and cadence, where
+observations came from, what is observed versus inferred versus
+synthetic, and how AI was used.</p>
+<p>Judges review every submission. The <strong>top 10 teams present
+live</strong> to a panel that includes Granica engineers and external
+guest judges. Make your slides something you can stand up and explain in
+three minutes.</p>
+<h2 id="how-you-are-judged">How you are judged</h2>
+<p>The judges will follow the same path as your project: the problem,
+the workflow, the evidence, and what changes.</p>
+<table>
+<colgroup>
+<col style="width: 30%" />
+<col style="width: 40%" />
+<col style="width: 30%" />
+</colgroup>
+<thead>
+<tr>
+<th>Criterion</th>
+<th style="text-align: right;">Weight</th>
+<th>What earns the points</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>1. Idea</strong></td>
+<td style="text-align: right;">25%</td>
+<td>The problem you picked, the person who has it, and the question you
+asked. Is it genuinely rooted in the world, not a screen? Is the
+question sharp and answerable in 48 hours? Does the proposed solution
+matter to someone?</td>
+</tr>
+<tr>
+<td><strong>2. Data collection process</strong></td>
+<td style="text-align: right;">25%</td>
+<td>How you turned a real workflow into useful observations. A clever
+proxy can beat expensive equipment. Show your method, consistency, and
+what you did when collection went wrong.</td>
+</tr>
+<tr>
+<td><strong>3. The data collected</strong></td>
+<td style="text-align: right;">25%</td>
+<td>What you actually ended up with: structure, schema, open format,
+traceability, and honesty about gaps and bias. Is it the right evidence
+for the problem? Could a stranger load the dataset and understand it
+without you in the room?</td>
+</tr>
+<tr>
+<td><strong>4. Impact</strong></td>
+<td style="text-align: right;">25%</td>
+<td>What the project makes possible. Does it help the named user make a
+better decision or take a better action? Does the demo make that clear
+in three minutes?</td>
+</tr>
+</tbody>
+</table>
+<p>Your demo and your code are judged inside these four criteria, not as
+separate line items.</p>
+<p><strong>You are not judged on model sophistication.</strong> A team
+that counts a queue by hand every 15 minutes, stores it cleanly, and
+draws an honest conclusion will beat a team with a sophisticated model
+and no real data.</p>
+<p>Two things lose points: claiming more than your observations support,
+and handing over a dataset nobody else can interpret. Two things win
+them: a collection process still running while you present, and an
+honest account of what your data cannot tell you.</p>
+<hr />
+<p><em>A full participant handbook—with worked examples, sample schemas
+and collection plans, a suggested free tool stack, a realistic 48-hour
+plan, and answers to common questions—is provided with the listing and
+at kickoff.</em></p>
+</body>
+</html>
